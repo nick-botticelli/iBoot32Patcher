@@ -229,6 +229,9 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
     char __pointer[4];
     char *_pointer = __pointer;
     printf("%s: Entering...\n", __FUNCTION__);
+    char *bl_stack_fail = NULL;
+    char *NOPstart = NULL;
+    char *NOPstop = NULL;
     
     /* find iBoot_vers_str */
     const char* iboot_vers_str = memstr(iboot_in->buf, iboot_in->len, "iBoot-");
@@ -269,41 +272,49 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
         printf("%s: Unable to find last_good_bl!\n", __FUNCTION__);
         return 0;
     }
+    printf("%s: Found last_good_bl at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl));
     last_good_bl +=4;
     
-    
-    char *bl_stack_fail = bl_search_up(iboot_str_3_xref, 0x10);
-    if (!bl_stack_fail) {
-        printf("%s: Unable to find bl_stack_fail!\n", __FUNCTION__);
-        return 0;
-    }
-    
-    char *last_bl_in_func = bl_search_up(bl_stack_fail-2, 0x40);
-    if (!last_bl_in_func) {
-        printf("%s: Unable to find last_bl_in_func!\n", __FUNCTION__);
-        return 0;
-    }
-    last_bl_in_func+=4;
+    printf("%s: Patching in eor r1, r5, #0x1 at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl));
+    *(uint32_t*)last_good_bl = bswap32(0x85f00101);
+    last_good_bl +=4;
 
+    printf("%s: Patching in mov.w r0, #0 at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl));
+    /* mov.w      r0, #0xffffffff -->  mov.w      r0, #0x0 */
+    *(uint32_t*)last_good_bl = bswap32(0x4ff00000);
+    last_good_bl +=4;
     
-    printf("%s: Patching in eor r1, r5, #0x1 at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_bl_in_func));
-    *(uint32_t*)last_bl_in_func = bswap32(0x85f00101);
-    last_bl_in_func +=4;
+    NOPstart = last_good_bl;
+    if ((bl_stack_fail = bl_search_up(iboot_str_3_xref, 0x10))){
+        char *last_bl_in_func = bl_search_up(bl_stack_fail-2, 0x40);
+        if (!last_bl_in_func) {
+            printf("%s: Unable to find last_bl_in_func!\n", __FUNCTION__);
+            return 0;
+        }
+        last_bl_in_func+=4;
+        
+        NOPstop = last_bl_in_func;
+    }else{
+        printf("%s: Unable to find bl_stack_fail, assuming post iOS 6 layout\n", __FUNCTION__);
+        
+        /* endfunc should be close to last_good_bl */
+        char *endfunc = pattern_search(last_good_bl, 0x10, 0x0000F800, 0x0000F800, 2);
+        if (!endfunc) {
+            printf("%s: Unable to find endfunc!\n", __FUNCTION__);
+            return 0;
+        }
+        NOPstop = endfunc;
+    }
     
     
     //because fuck clean patches
-    printf("%s: NOPing useless stuff at %p to %p ...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl),  GET_IBOOT_FILE_OFFSET(iboot_in, last_bl_in_func));
+    printf("%s: NOPing useless stuff at %p to %p ...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, NOPstart),  GET_IBOOT_FILE_OFFSET(iboot_in, NOPstop));
     
-    while (last_good_bl<last_bl_in_func) {
-        last_good_bl[0] = 0x00;
-        last_good_bl[1] = 0xBF; //NOP
-        last_good_bl +=2;
+    while (NOPstart<NOPstop) {
+        NOPstart[0] = 0x00;
+        NOPstart[1] = 0xBF; //NOP
+        NOPstart +=2;
     }
-    
-    printf("%s: Patching mov.w r0, #0xffffffff at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_bl_in_func));
-    /* mov.w      r0, #0xffffffff -->  mov.w      r0, #0x0 */
-    *(uint32_t*)last_bl_in_func = bswap32(0x4ff00000);
-   
     
     printf("%s: Leaving...\n", __FUNCTION__);
     return 1;
