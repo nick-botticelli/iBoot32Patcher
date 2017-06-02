@@ -284,6 +284,12 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
         return 0;
     }
     last_bl_in_func+=4;
+
+    
+    printf("%s: Patching in eor r1, r5, #0x1 at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_bl_in_func));
+    *(uint32_t*)last_bl_in_func = bswap32(0x85f00101);
+    last_bl_in_func +=4;
+    
     
     //because fuck clean patches
     printf("%s: NOPing useless stuff at %p to %p ...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl),  GET_IBOOT_FILE_OFFSET(iboot_in, last_bl_in_func));
