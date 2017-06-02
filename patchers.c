@@ -24,6 +24,9 @@
 #include <include/patchers.h>
 #include <include/iBoot32Patcher.h>
 
+#define MEMMEM_RELATIVE(iboot_in, bufstart, needle, needleLen) memmem(bufstart, iboot_in->len - ((char*)(bufstart) - (char*)iboot_in->buf), needle, needleLen)
+
+
 int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args) {
 	printf("%s: Entering...\n", __FUNCTION__);
 
@@ -201,20 +204,102 @@ int patch_debug_enabled(struct iboot_img* iboot_in) {
 }
 
 int patch_rsa_check(struct iboot_img* iboot_in) {
-	printf("%s: Entering...\n", __FUNCTION__);
-
-	/* Find the BL verify_shsh instruction... */
-	void* bl_verify_shsh = find_bl_verify_shsh(iboot_in);
-	if(!bl_verify_shsh) {
-		printf("%s: Unable to find BL verify_shsh!\n", __FUNCTION__);
-		return 0;
-	}
-
-	printf("%s: Patching BL verify_shsh at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, bl_verify_shsh));
-
-	/* BL verify_shsh --> MOVS R0, #0; STR R0, [R3] */
-	*(uint32_t*)bl_verify_shsh = bswap32(0x00201860);
-
-	printf("%s: Leaving...\n", __FUNCTION__);
-	return 1;
+    printf("%s: Entering...\n", __FUNCTION__);
+    
+    /* Find the BL verify_shsh instruction... */
+    void* bl_verify_shsh = find_bl_verify_shsh(iboot_in);
+    if(!bl_verify_shsh) {
+        printf("%s: Unable to find BL verify_shsh!\n", __FUNCTION__);
+        return 0;
+    }
+    
+    printf("%s: Patching BL verify_shsh at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, bl_verify_shsh));
+    
+    /* BL verify_shsh --> MOVS R0, #0; STR R0, [R3] */
+    *(uint32_t*)bl_verify_shsh = bswap32(0x00201860);
+    
+    printf("%s: Leaving...\n", __FUNCTION__);
+    return 1;
 }
+
+
+
+int patch_ticket_check(struct iboot_img* iboot_in) {
+#define pointer(p) (__pointer[0] = (uint32_t)p & 0xff, __pointer[1] = ((uint32_t)p/0x100) & 0xff, __pointer[2] = ((uint32_t)p/0x10000) & 0xff, __pointer[3] = ((uint32_t)p/0x1000000) & 0xff, _pointer)
+    char __pointer[4];
+    char *_pointer = __pointer;
+    printf("%s: Entering...\n", __FUNCTION__);
+    
+    /* find iBoot_vers_str */
+    const char* iboot_vers_str = memstr(iboot_in->buf, iboot_in->len, "iBoot-");
+    if (!iboot_vers_str) {
+        printf("%s: Unable to find iboot_vers_str!\n", __FUNCTION__);
+        return 0;
+    }
+    
+    
+    /* find pointer to vers_str (should be a few bytes below string) */
+    uint32_t vers_str_iboot = (uint32_t)GET_IBOOT_ADDR(iboot_in,iboot_vers_str);
+    char *str_pointer = MEMMEM_RELATIVE(iboot_in, iboot_vers_str, pointer(vers_str_iboot), 4);
+    if (!str_pointer) {
+        printf("%s: Unable to find str_pointer!\n", __FUNCTION__);
+        return 0;
+    }
+
+
+    /* find 3rd xref */
+    uint32_t *str_pointer_iboot = (uint32_t)GET_IBOOT_ADDR(iboot_in,str_pointer);
+    char *iboot_str_3_xref = iboot_in->buf;
+    for (int i=0; i<3; i++) {
+        if (!(iboot_str_3_xref = MEMMEM_RELATIVE(iboot_in, iboot_str_3_xref+1, pointer(str_pointer_iboot), 4))){
+            printf("%s: Unable to find %d iboot_str_3_xref!\n", __FUNCTION__,i+1);
+            return 0;
+        }
+    }
+    
+    /* find ldr rx = iboot_str_3_xref */
+    char *ldr_intruction = ldr_pcrel_search_up(iboot_str_3_xref, 0x100);
+    if (!ldr_intruction) {
+        printf("%s: Unable to find ldr_intruction!\n", __FUNCTION__);
+        return 0;
+    }
+    
+    char *last_good_bl = bl_search_down(ldr_intruction,0x100);
+    if (!last_good_bl) {
+        printf("%s: Unable to find last_good_bl!\n", __FUNCTION__);
+        return 0;
+    }
+    last_good_bl +=4;
+    
+    
+    char *bl_stack_fail = bl_search_up(iboot_str_3_xref, 0x10);
+    if (!bl_stack_fail) {
+        printf("%s: Unable to find bl_stack_fail!\n", __FUNCTION__);
+        return 0;
+    }
+    
+    char *last_bl_in_func = bl_search_up(bl_stack_fail-2, 0x40);
+    if (!last_bl_in_func) {
+        printf("%s: Unable to find last_bl_in_func!\n", __FUNCTION__);
+        return 0;
+    }
+    last_bl_in_func+=4;
+    
+    //because fuck clean patches
+    printf("%s: NOPing useless stuff at %p to %p ...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl),  GET_IBOOT_FILE_OFFSET(iboot_in, last_bl_in_func));
+    
+    while (last_good_bl<last_bl_in_func) {
+        last_good_bl[0] = 0x00;
+        last_good_bl[1] = 0xBF; //NOP
+        last_good_bl +=2;
+    }
+    
+    printf("%s: Patching mov.w r0, #0xffffffff at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_bl_in_func));
+    /* mov.w      r0, #0xffffffff -->  mov.w      r0, #0x0 */
+    *(uint32_t*)last_bl_in_func = bswap32(0x4ff00000);
+   
+    
+    printf("%s: Leaving...\n", __FUNCTION__);
+    return 1;
+}
+

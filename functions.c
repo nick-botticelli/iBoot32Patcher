@@ -23,7 +23,11 @@
 #include <include/iBoot32Patcher.h>
 
 void* bl_search_down(const void* start_addr, int len) {
-	return pattern_search(start_addr, len, 0xD000F000, 0xD000F800, 1);
+    return pattern_search(start_addr, len, 0xD000F000, 0xD000F800, 1);
+}
+
+void* bl_search_up(const void* start_addr, int len) {
+    return pattern_search(start_addr, len, 0xD000F000, 0xD000F800, -1);
 }
 
 void* find_last_LDR_rd(uintptr_t start, size_t len, const uint8_t rd) {
@@ -169,8 +173,27 @@ bool is_IT_insn(void* offset) {
 	return false;
 }
 
+void* ldr_pcrel_search_up(const void* start_addr, int len) {
+    char *caddr = (char*)start_addr;
+    for (unsigned char i = 0; i< 0xff; i++) {
+        len -=4;
+        if (len < 0)
+            return NULL; //out of mem
+        caddr -=4;
+        
+        uint32_t x = *(uint32_t*)caddr;
+        if ((x & 0xF8FF0000) == (0x48000000 | (i<<16)))
+            return (void*)(caddr+2);
+    }
+    return NULL;
+}
+
+void* ldr_search_down(const void* start_addr, int len) {
+    return pattern_search(start_addr, len, 0x00004800, 0x0000F800, 1);
+}
+
 void* ldr_search_up(const void* start_addr, int len) {
-	return pattern_search(start_addr, len, 0x00004800, 0x0000F800, -1);
+    return pattern_search(start_addr, len, 0x00004800, 0x0000F800, -1);
 }
 
 void* ldr32_search_up(const void* start_addr, int len) {

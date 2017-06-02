@@ -32,6 +32,7 @@ void* _memmem(const void* mem, int size, const void* pat, int size2);
 #endif
 
 void* bl_search_down(const void* start_addr, int len);
+void* bl_search_up(const void* start_addr, int len);
 void* iboot_memmem(struct iboot_img* iboot_in, void* pat);
 void* find_last_LDR_rd(uintptr_t start, size_t len, const uint8_t rd);
 void* find_next_bl_insn_to(struct iboot_img* iboot_in, uint32_t addr);
@@ -48,7 +49,9 @@ bool is_BW_insn(void* offset);
 bool is_LDRW_insn(void* offset);
 bool is_MOVW_insn(void* offset);
 bool is_IT_insn(void* offset);
+void* ldr_search_down(const void* start_addr, int len);
 void* ldr_search_up(const void* start_addr, int len);
+void* ldr_pcrel_search_up(const void* start_addr, int len);
 void* ldr32_search_up(const void* start_addr, int len);
 void* ldr_to(const void* loc);
 void* memstr(const void* mem, size_t size, const char* str);
