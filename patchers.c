@@ -239,6 +239,7 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
         printf("%s: Unable to find iboot_vers_str!\n", __FUNCTION__);
         return 0;
     }
+    printf("%s: Found iboot_vers_str at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, iboot_vers_str));
     
     
     /* find pointer to vers_str (should be a few bytes below string) */
@@ -248,6 +249,8 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
         printf("%s: Unable to find str_pointer!\n", __FUNCTION__);
         return 0;
     }
+    
+    printf("%s: Found str_pointer at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, str_pointer));
 
 
     /* find 3rd xref */
@@ -260,12 +263,16 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
         }
     }
     
+    printf("%s: Found iboot_str_3_xref at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, iboot_str_3_xref));
+    
     /* find ldr rx = iboot_str_3_xref */
     char *ldr_intruction = ldr_pcrel_search_up(iboot_str_3_xref, 0x100);
     if (!ldr_intruction) {
         printf("%s: Unable to find ldr_intruction!\n", __FUNCTION__);
         return 0;
     }
+    
+    printf("%s: Found ldr_intruction at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, ldr_intruction));
     
     char *last_good_bl = bl_search_down(ldr_intruction,0x100);
     if (!last_good_bl) {

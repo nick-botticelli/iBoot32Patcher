@@ -184,6 +184,8 @@ void* ldr_pcrel_search_up(const void* start_addr, int len) {
         uint32_t x = *(uint32_t*)caddr;
         if ((x & 0xF8FF0000) == (0x48000000 | (i<<16)))
             return (void*)(caddr+2);
+        else if ((x & 0x0000F8FF) == (0x00004800 | i))
+            return (void*)(caddr);
     }
     return NULL;
 }
