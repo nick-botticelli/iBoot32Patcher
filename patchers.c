@@ -291,9 +291,9 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
             printf("%s: Unable to find last_bl_in_func!\n", __FUNCTION__);
             return 0;
         }
-        last_bl_in_func+=4;
+        last_bl_in_func+=4; //now points to mov.w r0, #0xffffffff
         
-        NOPstop = last_bl_in_func;
+        NOPstop = last_bl_in_func+4; //now points to ldr.w      r1, [r8] //which is first instruction we don't want to NOP
     }else{
         printf("%s: Unable to find bl_stack_fail, assuming post iOS 6 layout\n", __FUNCTION__);
         
