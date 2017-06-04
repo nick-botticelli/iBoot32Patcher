@@ -323,6 +323,14 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
         NOPstart +=2;
     }
     
+    if (*(uint32_t*)NOPstop == bswap32(0x4ff0ff30)){ //mov.w      r0, #0xffffffff
+        printf("%s: Detected mov r0, #0xffffffff at NOPstop, assuming post iOS 9 layout\n", __FUNCTION__);
+        printf("%s: Applying additional mov.w r0, #0 patch at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, NOPstop));
+        /* mov.w      r0, #0xffffffff -->  mov.w      r0, #0x0 */
+        *(uint32_t*)NOPstop = bswap32(0x4ff00000);
+    }
+        
+    
     printf("%s: Leaving...\n", __FUNCTION__);
     return 1;
 }
