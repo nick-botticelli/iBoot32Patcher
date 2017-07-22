@@ -276,6 +276,36 @@ void* push_r4_r7_lr_search_up(const void* start_addr, int len) {
 	return pattern_search(start_addr, len, 0x0000B5F0, 0x0000FFFF, -2);
 }
 
+void* pop_search(const void* start_addr, int len, int searchup) {
+    return pattern_search(start_addr, len, 0b1011110<<9, 0xFE<<8, 2 - 4 * (searchup!=0));
+}
+
+void* push_search(const void* start_addr, int len, int searchup) {
+    return pattern_search(start_addr, len, 0b1011010<<9, 0xFE<<8, 2 - 4 * (searchup!=0));
+}
+
+void* branch_thumb_unconditional_search(const void* start_addr, int len, int searchup) {
+    return pattern_search(start_addr, len, 0b11100<<11, 0b11111<<11, 2 - 4 * (searchup!=0));
+}
+
+void* branch_thumb_conditional_search(const void* start_addr, int len, int searchup) {
+    return pattern_search(start_addr, len, 0b1101<<12, 0b1111<<12, 2 - 4 * (searchup!=0));
+}
+
+void* branch_search(const void* start_addr, int len, int searchup) {
+    void *ret = 0;
+    void *tmp = 0;
+    if ((tmp = branch_thumb_unconditional_search(start_addr, len, searchup))){
+        if (!ret || ((!searchup && tmp < ret) || (searchup && tmp > ret)))
+            ret = tmp;
+    }else if ((tmp = branch_thumb_conditional_search(start_addr, len, searchup))){
+        if (!ret || ((!searchup && tmp < ret) || (searchup && tmp > ret)))
+            ret = tmp;
+    }
+    return ret;
+}
+
+
 /* Taken from saurik's substrate framework. (See Hooker.cpp) */
 void* resolve_bl32(const void* bl) {
 	union {

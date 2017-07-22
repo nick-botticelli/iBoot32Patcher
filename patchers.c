@@ -239,6 +239,7 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
         printf("%s: Unable to find iboot_vers_str!\n", __FUNCTION__);
         return 0;
     }
+    printf("%s: Found iBoot baseaddr %p\n", __FUNCTION__, get_iboot_base_address(iboot_in->buf));
     printf("%s: Found iboot_vers_str at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, iboot_vers_str));
     
     
@@ -282,37 +283,39 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
     printf("%s: Found last_good_bl at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl));
     last_good_bl +=4;
     
-    printf("%s: Patching in eor r1, r5, #0x1 at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl));
-    *(uint32_t*)last_good_bl = bswap32(0x85f00101);
-    last_good_bl +=4;
+    char *next_pop = pop_search(last_good_bl,0x100,0);
+    if (!next_pop) {
+        printf("%s: Unable to find next_pop!\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found next_pop at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, next_pop));
+    printf("%s: Found next_pop at %p...\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, next_pop));
+    
+    char *last_branch = branch_search(next_pop,0x20,1);
+    char *prev_mov_r0_fail = pattern_search(next_pop, 0x20, bswap32(0x4ff0ff30), bswap32(0x4ff0ff30), -2);
 
+    if (prev_mov_r0_fail && prev_mov_r0_fail > last_branch) {
+        printf("%s: Detected prev_mov_r0_fail at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, prev_mov_r0_fail));
+        last_branch = prev_mov_r0_fail-2; //last branch is a BL
+    }
+    
+    if (!last_branch) {
+        printf("%s: Unable to find last_branch!\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found last_branch at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_branch));
+    
+    
     printf("%s: Patching in mov.w r0, #0 at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl));
-    /* mov.w      r0, #0xffffffff -->  mov.w      r0, #0x0 */
     *(uint32_t*)last_good_bl = bswap32(0x4ff00000);
     last_good_bl +=4;
     
-    NOPstart = last_good_bl;
-    if ((bl_stack_fail = bl_search_up(iboot_str_3_xref, 0x10))){
-        char *last_bl_in_func = bl_search_up(bl_stack_fail-2, 0x40);
-        if (!last_bl_in_func) {
-            printf("%s: Unable to find last_bl_in_func!\n", __FUNCTION__);
-            return 0;
-        }
-        last_bl_in_func+=4; //now points to mov.w r0, #0xffffffff
-        
-        NOPstop = last_bl_in_func+4; //now points to ldr.w      r1, [r8] //which is first instruction we don't want to NOP
-    }else{
-        printf("%s: Unable to find bl_stack_fail, assuming post iOS 6 layout\n", __FUNCTION__);
-        
-        /* endfunc should be close to last_good_bl */
-        char *endfunc = pattern_search(last_good_bl, 0x10, 0x0000F800, 0x0000F800, 2);
-        if (!endfunc) {
-            printf("%s: Unable to find endfunc!\n", __FUNCTION__);
-            return 0;
-        }
-        NOPstop = endfunc;
-    }
+    printf("%s: Patching in mov.w r1, #0 at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, last_good_bl));
+    *(uint32_t*)last_good_bl = bswap32(0x4ff00001);
+    last_good_bl +=4;
     
+    NOPstart = last_good_bl;
+    NOPstop = last_branch+2;
     
     //because fuck clean patches
     printf("%s: NOPing useless stuff at %p to %p ...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, NOPstart),  GET_IBOOT_FILE_OFFSET(iboot_in, NOPstop));
@@ -324,7 +327,7 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
     }
     
     if (*(uint32_t*)NOPstop == bswap32(0x4ff0ff30)){ //mov.w      r0, #0xffffffff
-        printf("%s: Detected mov r0, #0xffffffff at NOPstop, assuming post iOS 9 layout\n", __FUNCTION__);
+        printf("%s: Detected mov r0, #0xffffffff at NOPstop\n", __FUNCTION__);
         printf("%s: Applying additional mov.w r0, #0 patch at %p...\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, NOPstop));
         /* mov.w      r0, #0xffffffff -->  mov.w      r0, #0x0 */
         *(uint32_t*)NOPstop = bswap32(0x4ff00000);
