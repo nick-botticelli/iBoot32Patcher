@@ -222,6 +222,68 @@ int patch_rsa_check(struct iboot_img* iboot_in) {
     return 1;
 }
 
+int patch_remote_boot(struct iboot_img* iboot_in) {
+    printf("%s: Entering...\n", __FUNCTION__);
+    /* Find the variable string... */
+    char* var_str_loc = memstr(iboot_in->buf, iboot_in->len, "debug-uarts");
+    if(!var_str_loc) {
+        printf("%s: Unable to find %s string!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    printf("%s: %s string is at %p\n", __FUNCTION__, "debug-uarts", (void*) GET_IBOOT_FILE_OFFSET(iboot_in, var_str_loc));
+    
+    /* Find the variable string xref... */
+    uint32_t* var_xref = iboot_memmem(iboot_in, var_str_loc);
+    if(!var_xref) {
+        printf("%s: Unable to find %s string xref!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    
+    void* var_ldr = ldr_to(var_xref);
+    if(!var_ldr) {
+        printf("%s: Unable to find %s string LDR from xref!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    
+    void* firstBL = bl_search_down(var_ldr+4, 0x10);
+    if(!firstBL) {
+        printf("%s: Unable to find firstBL!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    void* secondBL = bl_search_down(firstBL+4, 0x10);
+    if(!secondBL) {
+        printf("%s: Unable to find secondBL!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    void* thefunc = bl_search_down(secondBL+4, 0x10);
+    if(!thefunc) {
+        printf("%s: Unable to find thefunc!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    
+    void *afterBL = bl_search_down(thefunc+4, 0x10);
+    if(!afterBL) {
+        printf("%s: Unable to find afterBL!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    
+    if (afterBL-4 == thefunc) {
+        printf("%s: afterbl is too close!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    
+    uint32_t *dst = resolve_bl32(thefunc);
+    if(!afterBL) {
+        printf("%s: Unable to find dst!\n", __FUNCTION__, "debug-uarts");
+        return 0;
+    }
+    
+    dst = (uint32_t*)((uint8_t*)dst-1);
+    printf("%s: dst is at %p\n", __FUNCTION__, (void*) GET_IBOOT_FILE_OFFSET(iboot_in, (void*)dst));
+    *dst = 0x47702001;
+    
+    return 1;
+}
 
 
 int patch_ticket_check(struct iboot_img* iboot_in) {
