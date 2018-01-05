@@ -51,14 +51,20 @@ int main(int argc, char** argv) {
 	uint32_t cmd_handler_ptr = 0;
 	char* cmd_handler_str = NULL;
 	char* custom_boot_args = NULL;
+    bool rsa_patch = false;
+    bool debug_patch = false;
+    bool ticket_patch = false;
 	struct iboot_img iboot_in;
 
 	memset(&iboot_in, 0, sizeof(iboot_in));
 
 	if(argc < 3) {
 		printf("Usage: %s <iboot_in> <iboot_out> [args]\n", argv[0]);
-		printf("\t-b <str>\tApply custom boot args.\n");
-		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex).\n");
+        printf("\t-r\t\tApply RSA check patch\n");
+        printf("\t-d\t\tApply debug_enabled patch\n");
+        printf("\t-t\t\tApply ticket patch\n");
+		printf("\t-b <str>\tApply custom boot args\n");
+		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
 		return -1;
 	}
 
@@ -67,11 +73,29 @@ int main(int argc, char** argv) {
 	for(int i = 0; i < argc; i++) {
 		if(HAS_ARG("-b", 1)) {
 			custom_boot_args = (char*) argv[i+1];
-		} else if(HAS_ARG("-c", 2)) {
+		}
+        
+        if(HAS_ARG("-c", 2)) {
 			cmd_handler_str = (char*) argv[i+1];
 			sscanf((char*) argv[i+2], "0x%08X", &cmd_handler_ptr);
 		}
+        
+        if(HAS_ARG("-r", 0)) {
+            rsa_patch = true;
+        }
+        
+        if(HAS_ARG("-d", 0)) {
+            debug_patch = true;
+        }
+        if(HAS_ARG("-t", 0)) {
+            ticket_patch = true;
+        }
 	}
+    
+    if (!rsa_patch && !debug_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str) {
+        printf("%s: Nothing to patch!\n", __FUNCTION__);
+        return -1;
+    }
 
 	fp = fopen(argv[1], "rb");
 	if(!fp) {
@@ -130,14 +154,28 @@ int main(int argc, char** argv) {
 		}
 
 		/* Only bootloaders with the kernel load routines pass the DeviceTree. */
-		ret = patch_debug_enabled(&iboot_in);
-		if(!ret) {
-			printf("%s: Error doing patch_debug_enabled()!\n", __FUNCTION__);
-			free(iboot_in.buf);
-			return -1;
-		}
+        
+        if (debug_patch) {
+            ret = patch_debug_enabled(&iboot_in);
+            if(!ret) {
+                printf("%s: Error doing patch_debug_enabled()!\n", __FUNCTION__);
+                free(iboot_in.buf);
+                return -1;
+            }
+        }
 	}
 
+    
+    if (ticket_patch) {
+        ret = patch_ticket_check(&iboot_in);
+        if(!ret) {
+            printf("%s: Error doing patch_ticket_check()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+
+    }
+    
 	/* Ensure that the loader has a shell. */
 	if(has_recovery_console(&iboot_in) && cmd_handler_str) {
 		ret = patch_cmd_handler(&iboot_in, cmd_handler_str, cmd_handler_ptr);
@@ -149,12 +187,15 @@ int main(int argc, char** argv) {
 	}
 
 	/* All loaders have the RSA check. */
-	ret = patch_rsa_check(&iboot_in);
-	if(!ret) {
-		printf("%s: Error doing patch_rsa_check()!\n", __FUNCTION__);
-		free(iboot_in.buf);
-		return -1;
-	}
+    
+    if (rsa_patch) {
+        ret = patch_rsa_check(&iboot_in);
+        if(!ret) {
+            printf("%s: Error doing patch_rsa_check()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+    }
 
 	printf("%s: Writing out patched file to %s...\n", __FUNCTION__, argv[2]);
 
