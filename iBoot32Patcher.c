@@ -54,6 +54,8 @@ int main(int argc, char** argv) {
     bool rsa_patch = false;
     bool debug_patch = false;
     bool ticket_patch = false;
+    bool remote_patch = false;
+    char* custom_color = NULL;
 	struct iboot_img iboot_in;
 
 	memset(&iboot_in, 0, sizeof(iboot_in));
@@ -63,8 +65,10 @@ int main(int argc, char** argv) {
         printf("\t-r\t\tApply RSA check patch\n");
         printf("\t-d\t\tApply debug_enabled patch\n");
         printf("\t-t\t\tApply ticket patch\n");
+        printf("\t-x\t\tApply iOS 10 remote boot patch\n");
 		printf("\t-b <str>\tApply custom boot args\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
+        printf("\t-l RRGGBB\tApply custom background color\n");
 		return -1;
 	}
 
@@ -90,9 +94,18 @@ int main(int argc, char** argv) {
         if(HAS_ARG("-t", 0)) {
             ticket_patch = true;
         }
+        
+        if(HAS_ARG("-x", 0)) {
+            remote_patch = true;
+        }
+        
+        if(HAS_ARG("-l", 1)) {
+            custom_color = (char*) argv[i+1];
+        }
+        
 	}
     
-    if (!rsa_patch && !debug_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str) {
+    if (!rsa_patch && !debug_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
         return -1;
     }
@@ -163,6 +176,27 @@ int main(int argc, char** argv) {
                 return -1;
             }
         }
+        
+        
+        if(custom_color) {
+            ret = patch_bgcolor(&iboot_in, custom_color);
+            if(!ret) {
+                printf("%s: Error doing patch_bgcolor()!\n", __FUNCTION__);
+                free(iboot_in.buf);
+                return -1;
+            }
+        }
+        
+        if (remote_patch) {
+            ret = patch_remote_boot(&iboot_in);
+            if(!ret) {
+                printf("%s: Error doing patch_remote_boot()!\n", __FUNCTION__);
+                free(iboot_in.buf);
+                return -1;
+            }
+            
+        }
+        
 	}
 
     

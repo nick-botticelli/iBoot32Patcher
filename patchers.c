@@ -400,3 +400,61 @@ int patch_ticket_check(struct iboot_img* iboot_in) {
     return 1;
 }
 
+int patch_bgcolor(struct iboot_img* iboot_in, const char* bgcolor) {
+    
+    printf("%s: Entering...\n", __FUNCTION__);
+    
+    if (strlen(bgcolor) != 6) {
+        printf("%s: Unable to decode passed color!\n", __FUNCTION__);
+        return 0;
+    }
+    
+    uint8_t red, green, blue;
+    
+    char *tmp = malloc(3);
+    memset(tmp, 0, 3);
+    
+    strncpy(tmp, bgcolor, 2);
+    red = strtol(tmp, NULL, 16);
+    
+    strncpy(tmp, bgcolor+2, 2);
+    green = strtol(tmp, NULL, 16);
+    
+    strncpy(tmp, bgcolor+4, 2);
+    blue = strtol(tmp, NULL, 16);
+    
+    printf("%s: red=%d green=%d blue=%d\n", __FUNCTION__, red, green, blue);
+    
+    
+    uint8_t MOV_r1_logo[] = {0x46, 0xF2, 0x6F, 0x70, 0xC6, 0xF6, 0x6F, 0x40};
+    
+    uint8_t *MOV_r1_logo_ptr = memmem(iboot_in->buf, iboot_in->len, &MOV_r1_logo, sizeof(MOV_r1_logo));
+    if (!MOV_r1_logo_ptr) {
+        printf("%s: Unable to find MOV R1, #'logo'\n", __FUNCTION__);
+        return 0;
+    } else {
+        printf("%s: Found MOV R1, #'logo' at %p\n", __FUNCTION__, (void*)MOV_r1_logo_ptr-(iboot_in->buf));
+    }
+    
+    
+    uint8_t setbgcolor_args[] = {0x00, 0x20, 0x00, 0x21, 0x00, 0x22};
+    
+    uint8_t *setbgcolor_args_ptr = memmem(MOV_r1_logo_ptr-0x80, 0x80, &setbgcolor_args, sizeof(setbgcolor_args));
+    if (!setbgcolor_args_ptr) {
+        printf("%s: Unable to find setbgcolor() args\n", __FUNCTION__);
+        return 0;
+    } else {
+        printf("%s: Found setbgcolor() args at %p\n", __FUNCTION__, (void*)setbgcolor_args_ptr-(iboot_in->buf));
+    }
+    
+    setbgcolor_args[0] = red;
+    setbgcolor_args[2] = green;
+    setbgcolor_args[4] = blue;
+    
+    memmove(setbgcolor_args_ptr, &setbgcolor_args, sizeof(setbgcolor_args));
+    printf("%s: Overwriting setbgcolor() args\n", __FUNCTION__);
+    
+    printf("%s: Leaving...\n", __FUNCTION__);
+    return 1;
+}
+
