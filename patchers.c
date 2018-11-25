@@ -111,8 +111,8 @@ int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args) {
 	/* Find the last LDR Rd which holds the null string pointer... */
 	int null_str_reg = (ldr_rd_boot_args->rd == mov_insn->rs) ? mov_insn->rd : mov_insn->rs;
 
-	/* + 0x10: Some iBoots have the null string load after the CMP instruction... */
-	void* ldr_null_str = find_last_LDR_rd((uintptr_t) (_cmp_insn + 0x10), 0x200, null_str_reg);
+	/* + 0x9: Some iBoots have the null string load after the CMP instruction... */
+	void* ldr_null_str = find_last_LDR_rd((uintptr_t) (_cmp_insn + 0x9), 0x200, null_str_reg);
 	if(!ldr_null_str) {
 		printf("%s: Unable to find LDR R%d, =null_str\n", __FUNCTION__, null_str_reg);
 		return 0;
