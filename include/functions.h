@@ -65,5 +65,5 @@ void* branch_search(const void* start_addr, int len, int searchup);
 void* resolve_bl32(const void* bl);
 void set_MOVT_W_insn_val(void* offset, uint8_t rd, uint16_t val);
 void set_MOVW_insn_val(void* offset, uint8_t rd, uint16_t val);
-
+void* find_next_LDR_insn_with_str(struct iboot_img* iboot_in, char* in);
 #endif

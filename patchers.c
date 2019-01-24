@@ -131,7 +131,27 @@ int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args) {
 	printf("%s: Leaving...\n", __FUNCTION__);
 	return 1;
 }
+int patch_boot_partition(struct iboot_img* iboot_in) {
+	printf("%s: Finding boot-partition LDR\n", __FUNCTION__);
+    void* bootpart_ldr =  find_next_LDR_insn_with_str(iboot_in, "boot-partition");
+    if(!bootpart_ldr) {
+    	printf("%s: Failed to find boot-partition LDR\n", __FUNCTION__);
+    	return 0;
+    }
+    printf("%s: Found boot-partition LDR: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, bootpart_ldr));
 
+    printf("%s: Finding boot-partition BL\n", __FUNCTION__);
+    void* bootpart_bl =  bl_search_down(bootpart_ldr, 0x90);
+    if(!bootpart_bl) {
+    	printf("%s: Failed to find boot-partition BL\n", __FUNCTION__);
+    	return 0;
+    }
+    printf("%s: Found boot-partition BL: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, bootpart_bl));
+    printf("%s: Patching boot-partition to 0\n", __FUNCTION__);
+    *(uint32_t*) bootpart_bl = bswap32(0x00200020);
+    printf("%s: boot-partition patched successfully\n", __FUNCTION__);
+    return 1;
+}
 int patch_cmd_handler(struct iboot_img* iboot_in, const char* cmd_str, uint32_t ptr) {
 	printf("%s: Entering...\n", __FUNCTION__);
 

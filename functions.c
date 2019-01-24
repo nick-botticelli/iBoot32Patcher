@@ -65,7 +65,14 @@ void* find_next_CMP_insn_with_value(void* start, size_t len, const uint8_t val) 
 	}
 	return NULL;
 }
-
+void* find_next_LDR_insn_with_str(struct iboot_img* iboot_in, char* in) {
+	char *str_loc = memmem(iboot_in->buf ,iboot_in->len, in,strlen(in));
+	if(!str_loc) {
+		printf("%s: Unable to find Address of string:  %s \n", in);
+		return 0;
+	}
+	return find_next_LDR_insn_with_value(iboot_in, GET_IBOOT_ADDR(iboot_in, str_loc));
+}
 void* find_next_LDR_insn_with_value(struct iboot_img* iboot_in, uint32_t value) {
 	void* ldr_xref = (void*) memmem(iboot_in->buf, iboot_in->len, &value, sizeof(value));
 	if(!ldr_xref) {

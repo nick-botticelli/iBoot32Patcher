@@ -36,6 +36,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include <include/arm32_defs.h>
 #include <include/finders.h>
@@ -53,11 +54,11 @@ int main(int argc, char** argv) {
 	char* custom_boot_args = NULL;
     bool rsa_patch = false;
     bool debug_patch = false;
+    bool boot_part_patch = false;
     bool ticket_patch = false;
     bool remote_patch = false;
     char* custom_color = NULL;
 	struct iboot_img iboot_in;
-
 	memset(&iboot_in, 0, sizeof(iboot_in));
 
 	if(argc < 3) {
@@ -66,6 +67,7 @@ int main(int argc, char** argv) {
         printf("\t-d\t\tApply debug_enabled patch\n");
         printf("\t-t\t\tApply ticket patch\n");
         printf("\t-x\t\tApply iOS 10 remote boot patch\n");
+        printf("\t-p\t\tApply boot-partition patch\n");
 		printf("\t-b <str>\tApply custom boot args\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
         printf("\t-l RRGGBB\tApply custom background color\n");
@@ -74,6 +76,8 @@ int main(int argc, char** argv) {
 
 	printf("%s: Starting...\n", __FUNCTION__);
 
+	//printf("Offset in iBoot: 0x%016" PRIXPTR "\n", (uintptr_t)GET_IBOOT_FILE_OFFSET(.iboot_in, find_next_LDR_insn_with_value(&iboot_in, 'boot-partition')));
+	//return 1;
 	for(int i = 0; i < argc; i++) {
 		if(HAS_ARG("-b", 1)) {
 			custom_boot_args = (char*) argv[i+1];
@@ -87,7 +91,9 @@ int main(int argc, char** argv) {
         if(HAS_ARG("-r", 0)) {
             rsa_patch = true;
         }
-        
+        if(HAS_ARG("-p", 0)) {
+            boot_part_patch = true;
+        }
         if(HAS_ARG("-d", 0)) {
             debug_patch = true;
         }
@@ -105,7 +111,7 @@ int main(int argc, char** argv) {
         
 	}
     
-    if (!rsa_patch && !debug_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
+    if (!rsa_patch && !debug_patch && !boot_part_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
         return -1;
     }
@@ -152,10 +158,8 @@ int main(int argc, char** argv) {
 		free(iboot_in.buf);
 		return -1;
 	}
-
 	printf("%s: iBoot-%d inputted.\n", __FUNCTION__, iboot_in.VERS);
-	
-	/* Check to see if the loader has a kernel load routine before trying to apply custom boot args + debug-enabled override. */
+		/* Check to see if the loader has a kernel load routine before trying to apply custom boot args + debug-enabled override. */
 	if(has_kernel_load(&iboot_in)) {
 		if(custom_boot_args) {
 			ret = patch_boot_args(&iboot_in, custom_boot_args);
@@ -231,6 +235,15 @@ int main(int argc, char** argv) {
         }
     }
 
+    if(boot_part_patch) {
+    	ret = patch_boot_partition(&iboot_in);
+        if(!ret) {
+            printf("%s: Error doing patch_boot_partition()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+    }
+
 	printf("%s: Writing out patched file to %s...\n", __FUNCTION__, argv[2]);
 
 	/* Write out the patched file... */
@@ -248,5 +261,6 @@ int main(int argc, char** argv) {
 	free(iboot_in.buf);
 
 	printf("%s: Quitting...\n", __FUNCTION__);
-	return 0;
+	return 1;
 }
+	
