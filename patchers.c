@@ -132,6 +132,7 @@ int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args) {
 	return 1;
 }
 int patch_boot_partition(struct iboot_img* iboot_in) {
+	printf("%s: Entering...\n", __FUNCTION__);
 	printf("%s: Finding boot-partition LDR\n", __FUNCTION__);
     void* bootpart_ldr =  find_next_LDR_insn_with_str(iboot_in, "boot-partition");
     if(!bootpart_ldr) {
@@ -149,7 +150,93 @@ int patch_boot_partition(struct iboot_img* iboot_in) {
     printf("%s: Found boot-partition BL: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, bootpart_bl));
     printf("%s: Patching boot-partition to 0\n", __FUNCTION__);
     *(uint32_t*) bootpart_bl = bswap32(0x00200020);
-    printf("%s: boot-partition patched successfully\n", __FUNCTION__);
+    printf("%s: Leaving...\n", __FUNCTION__);
+    return 1;
+}
+int patch_boot_command(struct iboot_img * iboot_in) {
+	printf("%s: Entering...\n", __FUNCTION__);
+    printf("%s: Finding fsboot string\n", __FUNCTION__);
+    uint32_t fsboot_str_loc = GET_IBOOT_ADDR(iboot_in, memmem(iboot_in -> buf, iboot_in -> len, "fsboot", strlen("fsboot")));
+    if (!fsboot_str_loc) {
+        printf("%s: Failed to find fsboot string\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found fsboot string: %p\n", __FUNCTION__, fsboot_str_loc);
+    printf("%s: Finding fsboot LDR\n", __FUNCTION__);
+    void * fsboot_ldr = find_next_LDR_insn_with_value(iboot_in, fsboot_str_loc);
+    if (!fsboot_ldr) {
+        printf("%s: Failed to find fsboot LDR\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found fsboot LDR: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, fsboot_ldr));
+    printf("%s: Finding upgrade string\n", __FUNCTION__);
+    uint32_t upgrade_str_loc = GET_IBOOT_ADDR(iboot_in, memmem(iboot_in -> buf, iboot_in -> len, "upgrade", strlen("upgrade")));
+    if (!upgrade_str_loc) {
+        printf("%s: Failed to find upgrade string\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found upgrade string: %p\n", __FUNCTION__, upgrade_str_loc);
+    printf("%s: Finding fsboot pointer\n", __FUNCTION__);
+    void * fsboot_ptr = 0x0;
+    for (int i = -2; i <= 0x100; i += 0x4) {
+        uint32_t x = * (uint32_t * )(fsboot_ldr + i);
+        if (bswap32(x) == bswap32(fsboot_str_loc)) {
+            fsboot_ptr = (void * )(fsboot_ldr + i);
+            printf("%s: Found fsboot pointer: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, fsboot_ptr));
+            break;
+        }
+
+    }
+    if (fsboot_ptr == 0x0) {
+        printf("%s: Failed to find fsboot pointer\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Pointing fsboot from %p to %p\n", __FUNCTION__, fsboot_str_loc, upgrade_str_loc);
+    *(uint32_t * ) fsboot_ptr = upgrade_str_loc;
+	printf("%s: Leaving...\n", __FUNCTION__);
+    return 1;
+}
+int patch_auto_boot(struct iboot_img * iboot_in) {
+	printf("%s: Entering...\n", __FUNCTION__);
+    printf("%s: Finding false string\n", __FUNCTION__);
+    uint32_t false_str_loc = GET_IBOOT_ADDR(iboot_in, memmem(iboot_in -> buf, iboot_in -> len, "false", strlen("false")));
+    if (!false_str_loc) {
+        printf("%s: Failed to find false string\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found false string: %p\n", __FUNCTION__, false);
+    printf("%s: Finding false LDR\n", __FUNCTION__);
+    void * false_ldr = find_next_LDR_insn_with_value(iboot_in, false_str_loc);
+    if (!false_ldr) {
+        printf("%s: Failed to find false LDR\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found false LDR: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, false_ldr));
+    printf("%s: Finding true string\n", __FUNCTION__);
+    uint32_t true_str_loc = GET_IBOOT_ADDR(iboot_in, memmem(iboot_in -> buf, iboot_in -> len, "true", strlen("true")));
+    if (!true_str_loc) {
+        printf("%s: Failed to find true string\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found true string: %p\n", __FUNCTION__, true_str_loc);
+    printf("%s: Finding false pointer\n", __FUNCTION__);
+    void * false_ptr = 0x0;
+    for (int i = -2; i <= 0x100; i += 0x4) {
+        uint32_t x = * (uint32_t * )(false_ldr + i);
+        if (bswap32(x) == bswap32(false_str_loc)) {
+            false_ptr = (void * )(false_ldr + i);
+            printf("%s: Found false pointer: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, false_ptr));
+            break;
+        }
+
+    }
+    if (false_ptr == 0x0) {
+        printf("%s: Failed to find false pointer\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Pointing false from %p to %p\n", __FUNCTION__, false_str_loc, true_str_loc);
+    *(uint32_t * ) false_ptr = true_str_loc;
+	printf("%s: Leaving...\n", __FUNCTION__);
     return 1;
 }
 int patch_cmd_handler(struct iboot_img* iboot_in, const char* cmd_str, uint32_t ptr) {
