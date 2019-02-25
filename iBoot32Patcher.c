@@ -55,8 +55,6 @@ int main(int argc, char** argv) {
     bool rsa_patch = false;
     bool debug_patch = false;
     bool boot_part_patch = false;
-	bool boot_command_patch = false;
-	bool auto_boot_patch = false;
     bool ticket_patch = false;
     bool remote_patch = false;
     char* custom_color = NULL;
@@ -70,8 +68,6 @@ int main(int argc, char** argv) {
         printf("\t-t\t\tApply ticket patch\n");
         printf("\t-x\t\tApply iOS 10 remote boot patch\n");
         printf("\t-p\t\tApply boot-partition patch\n");
-        printf("\t-u\t\tApply boot-command=upgrade patch\n");
-        printf("\t-a\t\tApply auto-boot=true patch\n");
 		printf("\t-b <str>\tApply custom boot args\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
         printf("\t-l RRGGBB\tApply custom background color\n");
@@ -80,26 +76,24 @@ int main(int argc, char** argv) {
 
 	printf("%s: Starting...\n", __FUNCTION__);
 
+	//printf("Offset in iBoot: 0x%016" PRIXPTR "\n", (uintptr_t)GET_IBOOT_FILE_OFFSET(.iboot_in, find_next_LDR_insn_with_value(&iboot_in, 'boot-partition')));
+	//return 1;
 	for(int i = 0; i < argc; i++) {
 		if(HAS_ARG("-b", 1)) {
 			custom_boot_args = (char*) argv[i+1];
 		}
+        
         if(HAS_ARG("-c", 2)) {
 			cmd_handler_str = (char*) argv[i+1];
 			sscanf((char*) argv[i+2], "0x%08X", &cmd_handler_ptr);
 		}
+        
         if(HAS_ARG("-r", 0)) {
             rsa_patch = true;
         }
         if(HAS_ARG("-p", 0)) {
             boot_part_patch = true;
         }
-        if(HAS_ARG("-a", 0)) {
-            auto_boot_patch = true;
-        }
-		if(HAS_ARG("-u", 0)) {
-			boot_command_patch = true;
-		}
         if(HAS_ARG("-d", 0)) {
             debug_patch = true;
         }
@@ -117,7 +111,7 @@ int main(int argc, char** argv) {
         
 	}
     
-    if (!rsa_patch && !debug_patch && !boot_part_patch && !boot_command_patch && !auto_boot_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
+    if (!rsa_patch && !debug_patch && !boot_part_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
         return -1;
     }
@@ -187,6 +181,7 @@ int main(int argc, char** argv) {
             }
         }
         
+        
         if(custom_color) {
             ret = patch_bgcolor(&iboot_in, custom_color);
             if(!ret) {
@@ -248,22 +243,7 @@ int main(int argc, char** argv) {
             return -1;
         }
     }
-	if(boot_command_patch) {
-		ret = patch_boot_command(&iboot_in);
-		if(!ret) {
-			printf("%s: Error doing patch_boot_command()!\n", __FUNCTION__);
-			free(iboot_in.buf);
-			return -1;
-		}
-	}
-	if(auto_boot_patch) {
-		ret = patch_auto_boot(&iboot_in);
-		if(!ret) {
-			printf("%s: Error doing patch_auto_boot()!\n", __FUNCTION__);
-			free(iboot_in.buf);
-			return -1;
-		}
-	}
+
 	printf("%s: Writing out patched file to %s...\n", __FUNCTION__, argv[2]);
 
 	/* Write out the patched file... */

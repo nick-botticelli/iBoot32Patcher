@@ -259,6 +259,7 @@ void* _memmem(const void* mem, int size, const void* pat, int size2) {
 void* memstr(const void* mem, size_t size, const char* str) {
 	return (void*) memmem(mem, size, str, strlen(str));
 }
+
 void* pattern_search(const void* addr, int len, int pattern, int mask, int step) {
 	char* caddr = (char*)addr;
 	if (len <= 0)
