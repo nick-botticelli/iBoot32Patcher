@@ -34,4 +34,5 @@ int patch_ticket_check(struct iboot_img* iboot_in);
 int patch_remote_boot(struct iboot_img* iboot_in);
 int patch_bgcolor(struct iboot_img* iboot_in, const char* bgcolor);
 int patch_boot_partition(struct iboot_img* iboot_in);
+int patch_setenv_cmd(struct iboot_img* iboot_in);
 #endif

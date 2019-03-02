@@ -138,6 +138,8 @@ int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args) {
 	return 1;
 }
 int patch_boot_partition(struct iboot_img* iboot_in) {
+	printf("%s: Entering...\n", __FUNCTION__);
+
 	printf("%s: Finding boot-partition LDR\n", __FUNCTION__);
     void* bootpart_ldr =  find_next_LDR_insn_with_str(iboot_in, "boot-partition");
     if(!bootpart_ldr) {
@@ -158,29 +160,92 @@ int patch_boot_partition(struct iboot_img* iboot_in) {
     printf("%s: boot-partition patched successfully\n", __FUNCTION__);
     return 1;
 }
-int patch_cmd_handler(struct iboot_img* iboot_in, const char* cmd_str, uint32_t ptr) {
+int patch_setenv_cmd(struct iboot_img* iboot_in) {
 	printf("%s: Entering...\n", __FUNCTION__);
 
-	size_t cmd_str_len = strlen(cmd_str);
-	size_t cmd_bytes_len = cmd_str_len + 2;
+	char* setenvstr = "setenv";
 
-	char* cmd_bytes = (char*)malloc(cmd_bytes_len);
-	if(!cmd_bytes) {
+	size_t setenv_str_len = strlen(setenvstr);
+	size_t setenv_bytes_len = setenv_str_len + 2;
+
+	char* setenv_bytes = (char*)malloc(setenv_bytes_len);
+	if(!setenv_bytes) {
 		printf("%s: Out of memory.\n", __FUNCTION__);
 		return 0;
 	}
 
-	memset(cmd_bytes, 0, cmd_bytes_len);
+	memset(setenv_bytes, 0, setenv_bytes_len);
 
 	/* Fill the buffer to make the string look like \0<cmd>\0 */
-	for(int i = 0; i < cmd_str_len; i++) {
-		cmd_bytes[i+1] = cmd_str[i];
+	for(int i = 0; i < setenv_str_len; i++) {
+		setenv_bytes[i+1] = setenvstr[i];
+	}
+
+	printf("%s: Finding setenv command string\n", __FUNCTION__);
+	void* setenv_ptr_str_loc = memmem(iboot_in->buf, iboot_in->len, setenv_bytes, setenv_bytes_len);
+	if(!setenv_ptr_str_loc) {
+		printf("%s: Unable to find the setenv command\n", __FUNCTION__);
+		return 0;
+	}
+	setenv_ptr_str_loc++;
+
+	printf("%s: Found the setenv command string at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, setenv_ptr_str_loc));
+
+	printf("%s: Finding setenv command\n", __FUNCTION__);
+
+	struct iboot32_cmd_t* setenv = (struct iboot32_cmd_t*) iboot_memmem(iboot_in, setenv_ptr_str_loc);
+	if(!setenv) {
+		printf("%s: Unable to find a ref to \"%p\".\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, setenv_ptr_str_loc));
+		return 0;
+	}
+	size_t setenvptr = setenv->cmd_ptr - get_iboot_base_address(iboot_in->buf);
+	printf("%s: Found the cmd string reference at %p\n", __FUNCTION__, setenvptr + get_iboot_base_address(iboot_in->buf));
+	char* p = iboot_in->buf;
+	void* firstBL = bl_search_down((void*)p + setenvptr, 0x50);
+
+	if(!firstBL) {
+		printf("%s: Unable to find first bl\n", __FUNCTION__);
+		return 0;
+	}
+
+	void* theCheck = bl_search_down(firstBL+0x4, 0x50);
+	
+	if(!theCheck) {
+		printf("%s: Unable to find environment variable check\n", __FUNCTION__);
+		return 0;
+	}
+	void* targetMov = theCheck + 0x6;
+
+	printf("%s Patching check to always allow env\n", __FUNCTION__);
+	
+	*(uint32_t*) targetMov = bswap32(0x0021);
+
+	printf("%s: Leaving\n", __FUNCTION__);
+	return 1;
+}
+int patch_cmd_handler(struct iboot_img* iboot_in, const char* cmd_str, uint32_t ptr) {
+	printf("%s: Entering...\n", __FUNCTION__);
+
+	size_t setenv_str_len = strlen(cmd_str);
+	size_t setenv_bytes_len = setenv_str_len + 2;
+
+	char* setenv_bytes = (char*)malloc(setenv_bytes_len);
+	if(!setenv_bytes) {
+		printf("%s: Out of memory.\n", __FUNCTION__);
+		return 0;
+	}
+
+	memset(setenv_bytes, 0, setenv_bytes_len);
+
+	/* Fill the buffer to make the string look like \0<cmd>\0 */
+	for(int i = 0; i < setenv_str_len; i++) {
+		setenv_bytes[i+1] = cmd_str[i];
 	}
 
 	/* Find the cmd handler string... */
-	void* cmd_ptr_str_loc = memmem(iboot_in->buf, iboot_in->len, cmd_bytes, cmd_bytes_len);
+	void* cmd_ptr_str_loc = memmem(iboot_in->buf, iboot_in->len, setenv_bytes, setenv_bytes_len);
 
-	free(cmd_bytes);
+	free(setenv_bytes);
 
 	if(!cmd_ptr_str_loc) {
 		printf("%s: Unable to find the cmd \"%s\".\n", __FUNCTION__, cmd_str);
@@ -256,7 +321,7 @@ int patch_remote_boot(struct iboot_img* iboot_in) {
         printf("%s: Unable to find %s string!\n", __FUNCTION__, "debug-uarts");
         return 0;
     }
-    printf("%s: %s string is at %p\n", __FUNCTION__, "debug-uarts", (void*) GET_IBOOT_FILE_OFFSET(iboot_in, var_str_loc));
+    printf("%s: %s string is at %p\n", __FUNCTION__, "debug-uarts", (void*) GET_IBOOT_FILE_OFFSET(iboot_in, ));
     
     /* Find the variable string xref... */
     uint32_t* var_xref = iboot_memmem(iboot_in, var_str_loc);

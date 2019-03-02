@@ -55,6 +55,7 @@ int main(int argc, char** argv) {
     bool rsa_patch = false;
     bool debug_patch = false;
     bool boot_part_patch = false;
+    bool setenv_patch = false;
     bool ticket_patch = false;
     bool remote_patch = false;
     char* custom_color = NULL;
@@ -68,6 +69,7 @@ int main(int argc, char** argv) {
         printf("\t-t\t\tApply ticket patch\n");
         printf("\t-x\t\tApply iOS 10 remote boot patch\n");
         printf("\t-p\t\tApply boot-partition patch\n");
+        printf("\t-e\t\tApply setenv patch\n");
 		printf("\t-b <str>\tApply custom boot args\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
         printf("\t-l RRGGBB\tApply custom background color\n");
@@ -82,6 +84,7 @@ int main(int argc, char** argv) {
 		if(HAS_ARG("-b", 1)) {
 			custom_boot_args = (char*) argv[i+1];
 		}
+
         
         if(HAS_ARG("-c", 2)) {
 			cmd_handler_str = (char*) argv[i+1];
@@ -94,6 +97,9 @@ int main(int argc, char** argv) {
         if(HAS_ARG("-p", 0)) {
             boot_part_patch = true;
         }
+        if(HAS_ARG("-e", 0)) {
+			setenv_patch = true;
+		}
         if(HAS_ARG("-d", 0)) {
             debug_patch = true;
         }
@@ -111,7 +117,7 @@ int main(int argc, char** argv) {
         
 	}
     
-    if (!rsa_patch && !debug_patch && !boot_part_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
+    if (!rsa_patch && !debug_patch && !boot_part_patch && !setenv_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
         return -1;
     }
@@ -239,6 +245,14 @@ int main(int argc, char** argv) {
     	ret = patch_boot_partition(&iboot_in);
         if(!ret) {
             printf("%s: Error doing patch_boot_partition()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+    }
+    if(setenv_patch) {
+    	ret = patch_setenv_cmd(&iboot_in);
+    	if(!ret) {
+            printf("%s: Error doing patch_setenv_cmd()!\n", __FUNCTION__);
             free(iboot_in.buf);
             return -1;
         }
