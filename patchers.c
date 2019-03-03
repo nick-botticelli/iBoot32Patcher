@@ -226,26 +226,26 @@ int patch_setenv_cmd(struct iboot_img* iboot_in) {
 int patch_cmd_handler(struct iboot_img* iboot_in, const char* cmd_str, uint32_t ptr) {
 	printf("%s: Entering...\n", __FUNCTION__);
 
-	size_t setenv_str_len = strlen(cmd_str);
-	size_t setenv_bytes_len = setenv_str_len + 2;
+	size_t cmd_str_len = strlen(cmd_str);
+	size_t cmd_bytes_len = cmd_str_len + 2;
 
-	char* setenv_bytes = (char*)malloc(setenv_bytes_len);
-	if(!setenv_bytes) {
+	char* cmd_bytes = (char*)malloc(cmd_bytes_len);
+	if(!cmd_bytes) {
 		printf("%s: Out of memory.\n", __FUNCTION__);
 		return 0;
 	}
 
-	memset(setenv_bytes, 0, setenv_bytes_len);
+	memset(cmd_bytes, 0, cmd_bytes_len);
 
 	/* Fill the buffer to make the string look like \0<cmd>\0 */
-	for(int i = 0; i < setenv_str_len; i++) {
-		setenv_bytes[i+1] = cmd_str[i];
+	for(int i = 0; i < cmd_str_len; i++) {
+		cmd_bytes[i+1] = cmd_str[i];
 	}
 
 	/* Find the cmd handler string... */
-	void* cmd_ptr_str_loc = memmem(iboot_in->buf, iboot_in->len, setenv_bytes, setenv_bytes_len);
+	void* cmd_ptr_str_loc = memmem(iboot_in->buf, iboot_in->len, cmd_bytes, cmd_bytes_len);
 
-	free(setenv_bytes);
+	free(cmd_bytes);
 
 	if(!cmd_ptr_str_loc) {
 		printf("%s: Unable to find the cmd \"%s\".\n", __FUNCTION__, cmd_str);
