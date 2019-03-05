@@ -214,11 +214,9 @@ int patch_setenv_cmd(struct iboot_img* iboot_in) {
 		printf("%s: Unable to find environment variable check\n", __FUNCTION__);
 		return 0;
 	}
-	void* targetMov = theCheck + 0x6;
-
 	printf("%s Patching check to always allow env\n", __FUNCTION__);
 	
-	*(uint32_t*) targetMov = bswap32(0x0021);
+	*(uint32_t*) theCheck = bswap32(0x00200020);
 
 	printf("%s: Leaving\n", __FUNCTION__);
 	return 1;
