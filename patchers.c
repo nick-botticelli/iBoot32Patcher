@@ -195,22 +195,22 @@ int patch_env_boot_args(struct iboot_img* iboot_in) {
     }
     printf("%s: Found ldr r%d, = null_str at %p\n", __FUNCTION__, null_str_reg, GET_IBOOT_ADDR(iboot_in, ldr_null_str));
 
-    printf("%s: Finding diags-path ldr\n", __FUNCTION__);
-    void* diags_ldr =  find_next_LDR_insn_with_str(iboot_in, "diags-path");
-    if(!diags_ldr) {
-        printf("%s: Failed to find diags-path ldr\n", __FUNCTION__);
+    printf("%s: Finding network-type ldr\n", __FUNCTION__);
+    void* network-type_ldr =  find_next_LDR_insn_with_str(iboot_in, "network-type-path");
+    if(!network-type_ldr) {
+        printf("%s: Failed to find network-type ldr\n", __FUNCTION__);
 	return 0;
     }
-    printf("%s: Found diags-path ldr at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, diags_ldr));
+    printf("%s: Found network-type-path ldr at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, network-type));
     printf("%s: Finding getenv bl\n", __FUNCTION__);
-    void* diags_bl = bl_search_down(diags_ldr, 0x10);
-    if(!diags_bl) {
+    void* network-type = bl_search_down(network-type, 0x10);
+    if(!network-type_bl) {
         printf("%s: Failed to find getenv bl\n", __FUNCTION__);
 	return 0;
     }
-    printf("%s: Found getenv bl at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, diags_bl));
+    printf("%s: Found getenv bl at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, network-type));
     printf("%s: Finding getenv address\n", __FUNCTION__);
-    uint32_t GetENV_Addr = Resolve_BL_Long((uint32_t)GET_IBOOT_ADDR(iboot_in, diags_bl), diags_bl);
+    uint32_t GetENV_Addr = Resolve_BL_Long((uint32_t)GET_IBOOT_ADDR(iboot_in, network-type), network-type);
     printf("%s: Found getenv address at: 0x%x\n", __FUNCTION__, GetENV_Addr);
     printf("%s: Finding boot-args string location\n", __FUNCTION__);
     void* boot_args_str_loc = memstr(iboot_in->buf, iboot_in->len, "boot-args");
