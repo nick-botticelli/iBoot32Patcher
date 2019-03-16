@@ -137,6 +137,126 @@ int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args) {
 	printf("%s: Leaving...\n", __FUNCTION__);
 	return 1;
 }
+
+int patch_env_boot_args(struct iboot_img* iboot_in) {
+    
+    printf("%s: Finding rd=md0 string location\n", __FUNCTION__);
+    void* default_boot_args_str_loc = memstr(iboot_in->buf, iboot_in->len, DEFAULT_BOOTARGS_STR);
+    if(!default_boot_args_str_loc) {
+        printf("%s: Failed to find rd=md0 string location\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Finding rd=md0 xref\n", __FUNCTION__);
+    void* default_boot_args_xref = iboot_memmem(iboot_in, default_boot_args_str_loc);
+    if(!default_boot_args_xref) {
+        printf("%s: Failed to find rd=md0 xref\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Finding rd=md0 LDR\n", __FUNCTION__);
+    char* bootargs_ldr =  find_next_LDR_insn_with_str(iboot_in, DEFAULT_BOOTARGS_STR);
+    if(!bootargs_ldr) {
+        printf("%s: Failed to find rd=md0 LDR\n", __FUNCTION__);
+        return 0;
+    }
+    struct arm32_thumb_LDR* ldr_rd_boot_args = (struct arm32_thumb_LDR*) bootargs_ldr;
+    char* _cmp_insn = find_next_CMP_insn_with_value(ldr_rd_boot_args, 0x100, 0);
+    if(!_cmp_insn) {
+        return 0;
+    }
+    struct arm32_thumb* cmp_insn = (struct arm32_thumb*) _cmp_insn;
+    printf("%s: Found CMP R%d, #%d at %p\n", __FUNCTION__, cmp_insn->rd, cmp_insn->offset, GET_IBOOT_ADDR(iboot_in, _cmp_insn));
+    void* arm32_thumb_IT_insn = _cmp_insn;
+    
+    /* Find the next IT EQ/IT NE instruction following the CMP Rd, #0 instruction... (kinda hacky) */
+    printf("%s: Finding IT EQ/IT NE\n", __FUNCTION__);
+    while(*(uint16_t*)arm32_thumb_IT_insn != ARM32_THUMB_IT_EQ && *(uint16_t*)arm32_thumb_IT_insn != ARM32_THUMB_IT_NE) {
+        arm32_thumb_IT_insn++;
+    }
+    printf("%s: Found IT EQ/IT NE at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, arm32_thumb_IT_insn));
+    
+    /* MOV Rd, Rs instruction usually follows right after the IT instruction. */
+    struct arm32_thumb_hi_reg_op* mov_insn = (struct arm32_thumb_hi_reg_op*) (arm32_thumb_IT_insn + 2);
+    
+    /* Find the last LDR Rd which holds the null string pointer... */
+    int null_str_reg = (ldr_rd_boot_args->rd == mov_insn->rs) ? mov_insn->rd : mov_insn->rs;
+    
+    /* + 0x10: Some iBoots have the null string load after the CMP instruction... */
+    printf("%s: Finding ldr r%d, = null_str\n", __FUNCTION__, null_str_reg);
+    char* ldr_null_str = find_last_LDR_rd((uintptr_t) (_cmp_insn + 0x10), 0x200, null_str_reg);
+    if(!ldr_null_str) {
+        
+        /* + 0x9 Some iBoots have the null string load after the CMP instruction... */
+        
+        ldr_null_str = find_last_LDR_rd((uintptr_t) (_cmp_insn + 0x9), 0x200, null_str_reg);
+        if(!ldr_null_str) {
+            printf("%s: Unable to find LDR R%d, =null_str\n", __FUNCTION__, null_str_reg);
+            return 0;
+        }
+    }
+    printf("%s: Found ldr r%d, = null_str at %p\n", __FUNCTION__, null_str_reg, GET_IBOOT_ADDR(iboot_in, ldr_null_str));
+
+    printf("%s: Finding diags-path ldr\n", __FUNCTION__);
+    void* diags_ldr =  find_next_LDR_insn_with_str(iboot_in, "diags-path");
+    if(!diags_ldr) {
+        printf("%s: Failed to find diags-path ldr\n", __FUNCTION__);
+    }
+    printf("%s: Found diags-path ldr at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, diags_ldr));
+    printf("%s: Finding getenv bl\n", __FUNCTION__);
+    void* diags_bl = bl_search_down(diags_ldr, 0x10);
+    if(!diags_bl) {
+        printf("%s: Failed to find getenv bl\n", __FUNCTION__);
+    }
+    printf("%s: Found getenv bl at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, diags_bl));
+    printf("%s: Finding getenv address\n", __FUNCTION__);
+    uint32_t GetENV_Addr = Resolve_BL_Long((uint32_t)GET_IBOOT_ADDR(iboot_in, diags_bl), diags_bl);
+    printf("%s: Found getenv address at: 0x%x\n", __FUNCTION__, GetENV_Addr);
+    printf("%s: Finding boot-args string location\n", __FUNCTION__);
+    void* boot_args_str_loc = memstr(iboot_in->buf, iboot_in->len, "boot-args");
+    if(!boot_args_str_loc) {
+        printf("%s: Failed to find boot-args string location", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Pointing rd=md0 ldr to boot-args string\n", __FUNCTION__);
+    *(uint32_t*)default_boot_args_xref = (uintptr_t) GET_IBOOT_ADDR(iboot_in, boot_args_str_loc);
+
+    if((uint32_t)GET_IBOOT_FILE_OFFSET(iboot_in, ldr_null_str) < (uint32_t)GET_IBOOT_FILE_OFFSET(iboot_in, _cmp_insn)) {
+        printf("%s: Replacing ldr r%d, = null_str with mov r0, r%d\n", __FUNCTION__, null_str_reg, ldr_rd_boot_args->rd);
+        struct arm32_thumb_hi_reg_op* mov_null_str = (struct arm32_thumb_hi_reg_op*)ldr_null_str;
+        mov_null_str -> rd = 0;
+        mov_null_str -> rs = ldr_rd_boot_args->rd;
+        mov_null_str -> h2 = mov_insn -> h2;
+        mov_null_str -> h1 = mov_insn -> h1;
+        mov_null_str -> op = mov_insn -> op;
+        mov_null_str -> pad = mov_insn -> pad;
+        char* bl_loc = ldr_null_str + 0x2;
+        printf("%s: Building bl 0x%x\n", __FUNCTION__, GetENV_Addr);
+        Build_BL_Long((void*)bl_loc, GetENV_Addr, (uint32_t)GET_IBOOT_ADDR(iboot_in, bl_loc));
+        printf("%s: Pointing mov r%d, r%d to mov r%d, r0\n", __FUNCTION__, mov_insn -> rd, mov_insn -> rs, mov_insn -> rd);
+        mov_insn -> rs = 0x0;
+    }
+    else {
+        printf("%s: Pointing ldr r%d, = boot-args to ldr r0, = boot-args\n", __FUNCTION__, ldr_rd_boot_args->rd);
+        ldr_rd_boot_args->rd = 0x0;
+        char* NewBL = _cmp_insn;
+        printf("%s: Building bl 0x%x\n", __FUNCTION__, GetENV_Addr);
+        Build_BL_Long((void*)NewBL, GetENV_Addr, (uint32_t)GET_IBOOT_ADDR(iboot_in, NewBL));
+        printf("%s: Building mov r%d, r0\n", __FUNCTION__, mov_insn -> rd);
+        struct arm32_thumb_hi_reg_op* new_mov_insn = (struct arm32_thumb_hi_reg_op*) (NewBL + 0x4);
+        new_mov_insn -> rd = mov_insn -> rd;
+        new_mov_insn -> rs = 0x0;
+        new_mov_insn -> h2 = mov_insn -> h2;
+        new_mov_insn -> h1 = mov_insn -> h1;
+        new_mov_insn -> op = mov_insn -> op;
+        new_mov_insn -> pad = mov_insn -> pad;
+        printf("%s: Nopping old mov\n", __FUNCTION__);
+        char* NopLoc = (NewBL + 0x6);
+        NopLoc[0] = 0x00;
+        NopLoc[1] = 0xBF;
+    }
+    printf("%s: Leaving\n", __FUNCTION__);
+    return 1;
+}
+
 int patch_boot_partition(struct iboot_img* iboot_in) {
 	printf("%s: Entering...\n", __FUNCTION__);
 

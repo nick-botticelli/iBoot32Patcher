@@ -29,7 +29,37 @@ void* bl_search_down(const void* start_addr, int len) {
 void* bl_search_up(const void* start_addr, int len) {
     return pattern_search(start_addr, len, 0xD000F000, 0xD000F800, -1);
 }
-
+uint32_t sign_extend_11_32(uint32_t x) {
+    const int bits = 11;
+    uint32_t m = 1u << (bits - 1);
+    return (x ^ m) - m;
+}
+void* Resolve_BL_Long(uint32_t Offset, void* buff) {
+    struct arm32_thumb_BL* bl = (struct arm32_thumb_BL*) buff;
+    uint32_t low = bl -> offset2;
+    low = low << 1;
+    uint32_t Hi = bl -> offset;
+    Hi = sign_extend_11_32(Hi);
+    Hi = Hi << 12;
+    Hi += low;
+    uint32_t PC = Offset;
+    PC += 0x4;
+    return (Hi + PC);
+}
+void* Build_BL_Long(void* buff, uint32_t Target, uint32_t ins) {
+    uint32_t PC = ins + 0x4;
+    uint32_t offset = Target - PC;
+    uint16_t High_Off = sign_extend_11_32(offset >> 12) - 0xff000;
+    uint16_t Low_Off = (offset & 0xFFF) >> 1;
+    struct arm32_thumb_BL* bl = (struct arm32_thumb_BL*) buff;
+    bl->h = 0x0;
+    bl->offset = High_Off;
+    bl->padd = 0xf;
+    bl->h2 = 0x1;
+    bl->offset2 = Low_Off;
+    bl->padd2 = 0xf;
+    return (void*) buff;
+}
 void* find_last_LDR_rd(uintptr_t start, size_t len, const uint8_t rd) {
 	for(uintptr_t i = start; i > 0; i -= sizeof(uint16_t)) {
 		void* prev_ldr = pattern_search((void*) i, len, 0x00004800, 0x0000F800, -2);

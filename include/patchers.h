@@ -27,6 +27,7 @@
 #define RELIANCE_CERT_STR "Reliance on this certificate"
 
 int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args);
+int patch_env_boot_args(struct iboot_img* iboot_in);
 int patch_cmd_handler(struct iboot_img* iboot_in, const char* cmd_str, uint32_t ptr);
 int patch_debug_enabled(struct iboot_img* iboot_in);
 int patch_rsa_check(struct iboot_img* iboot_in);

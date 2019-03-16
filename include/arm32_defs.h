@@ -46,6 +46,15 @@ struct arm32_thumb_MOVW {
 	uint8_t bit31 : 1;
 } __attribute__((packed));
 
+struct arm32_thumb_BL {
+	uint16_t offset : 11;
+	uint8_t h : 1;
+	uint8_t padd : 4;
+	uint16_t offset2 : 11;
+	uint8_t h2 : 1;
+	uint8_t padd2 : 4;
+} __attribute__((packed));
+
 struct arm32_thumb_MOVT_W {
 	uint8_t imm4 : 4;
 	uint8_t pad0 : 6;

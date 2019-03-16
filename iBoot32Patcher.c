@@ -52,6 +52,7 @@ int main(int argc, char** argv) {
 	uint32_t cmd_handler_ptr = 0;
 	char* cmd_handler_str = NULL;
 	char* custom_boot_args = NULL;
+	bool env_boot_args = false;
     bool rsa_patch = false;
     bool debug_patch = false;
     bool boot_part_patch = false;
@@ -71,6 +72,7 @@ int main(int argc, char** argv) {
         printf("\t-p\t\tApply boot-partition patch\n");
         printf("\t-e\t\tApply setenv patch\n");
 		printf("\t-b <str>\tApply custom boot args\n");
+		printf("\t-a \tUse boot-args environment variable\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
         printf("\t-l RRGGBB\tApply custom background color\n");
 		return -1;
@@ -93,6 +95,9 @@ int main(int argc, char** argv) {
         
         if(HAS_ARG("-r", 0)) {
             rsa_patch = true;
+        }
+        if(HAS_ARG("-a", 0)) {
+            env_boot_args = true;
         }
         if(HAS_ARG("-p", 0)) {
             boot_part_patch = true;
@@ -117,8 +122,12 @@ int main(int argc, char** argv) {
         
 	}
     
-    if (!rsa_patch && !debug_patch && !boot_part_patch && !setenv_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
+    if (!rsa_patch && !debug_patch && !boot_part_patch && !setenv_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch && !env_boot_args) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
+        return -1;
+    }
+    if(custom_boot_args && env_boot_args) {
+    	printf("%s: Can't hardcode boot-args and use environment variable!\n", __FUNCTION__);
         return -1;
     }
 
@@ -173,6 +182,14 @@ int main(int argc, char** argv) {
 				printf("%s: Error doing patch_boot_args()!\n", __FUNCTION__);
 				free(iboot_in.buf);
 				return -1;
+			}
+		}
+		if(env_boot_args) {
+			ret = patch_env_boot_args(&iboot_in);
+			if(!ret) {
+				printf("%s: Error doing patch_env_boot_args()!\n", __FUNCTION__);
+				free(iboot_in.buf);
+				return 0;
 			}
 		}
 

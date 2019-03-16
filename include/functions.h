@@ -34,6 +34,8 @@ void* _memmem(const void* mem, int size, const void* pat, int size2);
 void* bl_search_down(const void* start_addr, int len);
 void* bl_search_up(const void* start_addr, int len);
 void* iboot_memmem(struct iboot_img* iboot_in, void* pat);
+void* Build_BL_Long(void* buff, uint32_t Target, uint32_t ins);
+void* Resolve_BL_Long(uint32_t Offset, void* buff);
 void* find_last_LDR_rd(uintptr_t start, size_t len, const uint8_t rd);
 void* find_next_bl_insn_to(struct iboot_img* iboot_in, uint32_t addr);
 void* find_next_CMP_insn_with_value(void* start, size_t len, const uint8_t val);
