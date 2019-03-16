@@ -199,12 +199,14 @@ int patch_env_boot_args(struct iboot_img* iboot_in) {
     void* diags_ldr =  find_next_LDR_insn_with_str(iboot_in, "diags-path");
     if(!diags_ldr) {
         printf("%s: Failed to find diags-path ldr\n", __FUNCTION__);
+	return 0;
     }
     printf("%s: Found diags-path ldr at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, diags_ldr));
     printf("%s: Finding getenv bl\n", __FUNCTION__);
     void* diags_bl = bl_search_down(diags_ldr, 0x10);
     if(!diags_bl) {
         printf("%s: Failed to find getenv bl\n", __FUNCTION__);
+	return 0;
     }
     printf("%s: Found getenv bl at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, diags_bl));
     printf("%s: Finding getenv address\n", __FUNCTION__);
