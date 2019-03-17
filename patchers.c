@@ -137,7 +137,6 @@ int patch_boot_args(struct iboot_img* iboot_in, const char* boot_args) {
 	printf("%s: Leaving...\n", __FUNCTION__);
 	return 1;
 }
-
 int patch_env_boot_args(struct iboot_img* iboot_in) {
     
     printf("%s: Finding rd=md0 string location\n", __FUNCTION__);
@@ -194,23 +193,23 @@ int patch_env_boot_args(struct iboot_img* iboot_in) {
         }
     }
     printf("%s: Found ldr r%d, = null_str at %p\n", __FUNCTION__, null_str_reg, GET_IBOOT_ADDR(iboot_in, ldr_null_str));
-
+    
     printf("%s: Finding network-type ldr\n", __FUNCTION__);
-    void* network-type_ldr =  find_next_LDR_insn_with_str(iboot_in, "network-type-path");
-    if(!network-type_ldr) {
+    void* network_type_ldr =  find_next_LDR_insn_with_str(iboot_in, "network-type");
+    if(!network_type_ldr) {
         printf("%s: Failed to find network-type ldr\n", __FUNCTION__);
-	return 0;
+        return 0;
     }
-    printf("%s: Found network-type-path ldr at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, network-type));
+    printf("%s: Found network-type ldr at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, network_type_ldr));
     printf("%s: Finding getenv bl\n", __FUNCTION__);
-    void* network-type = bl_search_down(network-type, 0x10);
-    if(!network-type_bl) {
+    void* network_type_bl = bl_search_down(network_type_ldr, 0x10);
+    if(!network_type_bl) {
         printf("%s: Failed to find getenv bl\n", __FUNCTION__);
-	return 0;
+        return 0;
     }
-    printf("%s: Found getenv bl at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, network-type));
+    printf("%s: Found getenv bl at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, network_type_bl));
     printf("%s: Finding getenv address\n", __FUNCTION__);
-    uint32_t GetENV_Addr = Resolve_BL_Long((uint32_t)GET_IBOOT_ADDR(iboot_in, network-type), network-type);
+    uint32_t GetENV_Addr = Resolve_BL_Long((uint32_t)GET_IBOOT_ADDR(iboot_in, network_type_bl), network_type_bl);
     printf("%s: Found getenv address at: 0x%x\n", __FUNCTION__, GetENV_Addr);
     printf("%s: Finding boot-args string location\n", __FUNCTION__);
     void* boot_args_str_loc = memstr(iboot_in->buf, iboot_in->len, "boot-args");
@@ -220,7 +219,7 @@ int patch_env_boot_args(struct iboot_img* iboot_in) {
     }
     printf("%s: Pointing rd=md0 ldr to boot-args string\n", __FUNCTION__);
     *(uint32_t*)default_boot_args_xref = (uintptr_t) GET_IBOOT_ADDR(iboot_in, boot_args_str_loc);
-
+    
     if((uint32_t)GET_IBOOT_FILE_OFFSET(iboot_in, ldr_null_str) < (uint32_t)GET_IBOOT_FILE_OFFSET(iboot_in, _cmp_insn)) {
         printf("%s: Replacing ldr r%d, = null_str with mov r0, r%d\n", __FUNCTION__, null_str_reg, ldr_rd_boot_args->rd);
         struct arm32_thumb_hi_reg_op* mov_null_str = (struct arm32_thumb_hi_reg_op*)ldr_null_str;
