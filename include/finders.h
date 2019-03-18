@@ -28,5 +28,10 @@ void* find_bl_verify_shsh_generic(struct iboot_img* iboot_in);
 void* find_bl_verify_shsh_insn(struct iboot_img* iboot_in, void* pc);
 void* find_dtre_get_value_bl_insn(struct iboot_img* iboot_in, const char* var);
 void* find_verify_shsh_top(void* ptr);
+uint32_t find_GETENV_Addr(struct iboot_img* iboot_in);
+void* find_Boot_Args_String_Location(struct iboot_img* iboot_in);
+void* find_Boot_Args_MOV(void* Search_Begin);
+void* find_ldr_xref(struct iboot_img *iboot_in);
+void* find_null_str(void* _mov_insn, int reg);
 
 #endif

@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
         printf("\t-p\t\tApply boot-partition patch\n");
         printf("\t-e\t\tApply setenv patch\n");
 		printf("\t-b <str>\tApply custom boot args\n");
-		printf("\t-a \tUse boot-args environment variable\n");
+		printf("\t-a\t\tUse boot-args environment variable\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
         printf("\t-l RRGGBB\tApply custom background color\n");
 		return -1;
