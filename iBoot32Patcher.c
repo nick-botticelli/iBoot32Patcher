@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
     bool setenv_patch = false;
     bool ticket_patch = false;
     bool remote_patch = false;
+    bool kaslr_patch = false;
     char* custom_color = NULL;
 	struct iboot_img iboot_in;
 	memset(&iboot_in, 0, sizeof(iboot_in));
@@ -73,6 +74,7 @@ int main(int argc, char** argv) {
         printf("\t-e\t\tApply setenv patch\n");
 		printf("\t-b <str>\tApply custom boot args\n");
 		printf("\t-a\t\tUse boot-args environment variable\n");
+        printf("\t-k\t\tDisable KASLR\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
         printf("\t-l RRGGBB\tApply custom background color\n");
 		return -1;
@@ -119,10 +121,13 @@ int main(int argc, char** argv) {
         if(HAS_ARG("-l", 1)) {
             custom_color = (char*) argv[i+1];
         }
+        if(HAS_ARG("-k", 0)) {
+            kaslr_patch = true;
+        }
         
 	}
     
-    if (!rsa_patch && !debug_patch && !boot_part_patch && !setenv_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch && !env_boot_args) {
+    if (!rsa_patch && !debug_patch && !boot_part_patch && !setenv_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch && !env_boot_args && !kaslr_patch) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
         return -1;
     }
@@ -204,7 +209,14 @@ int main(int argc, char** argv) {
             }
         }
         
-        
+        if(kaslr_patch) {
+            ret = disable_kaslr(&iboot_in);
+            if(!ret) {
+                printf("%s: Error doing disable_kaslr()!\n", __FUNCTION__);
+                free(iboot_in.buf);
+                return -1;
+            }
+        }
         if(custom_color) {
             ret = patch_bgcolor(&iboot_in, custom_color);
             if(!ret) {

@@ -200,8 +200,38 @@ int patch_env_boot_args(struct iboot_img* iboot_in) {
         Current_ins[1] = 0xBF; //NOP
         Current_ins += 0x2;
     }
-    
+	printf("%s: Leaving\n", __FUNCTION__);
     return 1;
+}
+
+int disable_kaslr(struct iboot_img* iboot_in) {
+	printf("%s: Entering...\n", __FUNCTION__);
+	printf("%s: Finding __TEXT LDR\n", __FUNCTION__);
+    char* text_ldr =  find_next_LDR_insn_with_str(iboot_in, "__TEXT");
+    if(!text_ldr) {
+        printf("%s: Failed to find __TEXT LDR\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found __TEXT LDR at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, text_ldr));
+    printf("%s: Finding push\n", __FUNCTION__);
+    void* push = push_search(text_ldr, 0x200, 1);
+    if(!push) {
+        printf("%s: Failed to find push\n", __FUNCTION__);
+        return 0;
+    }
+	printf("%s: Found push at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, push));
+    printf("%s: Finding bne\n", __FUNCTION__);
+    char* bne = branch_thumb_conditional_search(push, 0x50, 0);
+    if(!bne) {
+        printf("%s: Failed to find bne\n", __FUNCTION__);
+        return 0;
+    }
+    printf("%s: Found bne at %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, bne));
+    printf("%s: nopping bne\n", __FUNCTION__);
+    bne[0] = 0x00;
+    bne[1] = 0xBF;
+	printf("%s: Leaving\n", __FUNCTION__);
+	return 1;
 }
 
 int patch_boot_partition(struct iboot_img* iboot_in) {
@@ -224,7 +254,7 @@ int patch_boot_partition(struct iboot_img* iboot_in) {
     printf("%s: Found boot-partition BL: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, bootpart_bl));
     printf("%s: Patching boot-partition to 0\n", __FUNCTION__);
     *(uint32_t*) bootpart_bl = bswap32(0x00200020);
-    printf("%s: boot-partition patched successfully\n", __FUNCTION__);
+	printf("%s: Leaving\n", __FUNCTION__);
     return 1;
 }
 int patch_setenv_cmd(struct iboot_img* iboot_in) {
