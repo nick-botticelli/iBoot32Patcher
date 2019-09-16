@@ -55,6 +55,7 @@ int main(int argc, char** argv) {
     bool debug_patch = false;
     bool ticket_patch = false;
     bool remote_patch = false;
+    bool ignore_nvram_patch = false;
     char* custom_color = NULL;
 	struct iboot_img iboot_in;
 
@@ -69,6 +70,7 @@ int main(int argc, char** argv) {
 		printf("\t-b <str>\tApply custom boot args\n");
 		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
         printf("\t-l RRGGBB\tApply custom background color\n");
+        printf("\t-i\t\tIgnore NVRAM boot-partition/ramdisk variables\n");
 		return -1;
 	}
 
@@ -103,9 +105,13 @@ int main(int argc, char** argv) {
             custom_color = (char*) argv[i+1];
         }
         
+        if(HAS_ARG("-i", 0)) {
+            ignore_nvram_patch = true;
+        }
+        
 	}
     
-    if (!rsa_patch && !debug_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch) {
+    if (!rsa_patch && !debug_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch && !ignore_nvram_patch) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
         return -1;
     }
@@ -226,6 +232,15 @@ int main(int argc, char** argv) {
         ret = patch_rsa_check(&iboot_in);
         if(!ret) {
             printf("%s: Error doing patch_rsa_check()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+    }
+    
+    if (ignore_nvram_patch) {
+        ret = patch_ignore_nvram(&iboot_in);
+        if(!ret) {
+            printf("%s: Error doing ignore_nvram_patch()!\n", __FUNCTION__);
             free(iboot_in.buf);
             return -1;
         }
