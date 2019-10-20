@@ -55,82 +55,121 @@ int main(int argc, char** argv) {
 	bool env_boot_args = false;
     bool rsa_patch = false;
     bool debug_patch = false;
-    bool boot_part_patch = false;
+    bool boot_partition_patch = false;
+    int boot_partition_9 = 0;
+    bool boot_ramdisk_patch = false;
     bool setenv_patch = false;
     bool ticket_patch = false;
     bool remote_patch = false;
+    bool local_patch = false;
     bool kaslr_patch = false;
+    bool i433_patch = false;
+    bool logo4_patch = false;
     char* custom_color = NULL;
 	struct iboot_img iboot_in;
 	memset(&iboot_in, 0, sizeof(iboot_in));
 
 	if(argc < 3) {
 		printf("Usage: %s <iboot_in> <iboot_out> [args]\n", argv[0]);
-        printf("\t-r\t\tApply RSA check patch\n");
-        printf("\t-d\t\tApply debug_enabled patch\n");
-        printf("\t-t\t\tApply ticket patch\n");
-        printf("\t-x\t\tApply iOS 10 remote boot patch\n");
-        printf("\t-p\t\tApply boot-partition patch\n");
-        printf("\t-e\t\tApply setenv patch\n");
-		printf("\t-b <str>\tApply custom boot args\n");
-		printf("\t-a\t\tUse boot-args environment variable\n");
-        printf("\t-k\t\tDisable KASLR\n");
-		printf("\t-c <cmd> <ptr>\tChange a command handler's pointer (hex)\n");
-        printf("\t-l RRGGBB\tApply custom background color\n");
+        printf("\t-b <str>\t\tApply custom boot args\n");
+        printf("\t-a\t\t\tUse boot-args environment variable\n");
+        printf("\t-c <cmd> <ptr>\t\tChange a command handler's pointer (hex)\n");
+        
+        printf("\t--rsa\t\t\tApply RSA check patch\n");
+        printf("\t--debug\t\t\tApply debug_enabled patch\n");
+        printf("\t--ticket\t\tApply ticket patch\n");
+        printf("\t--local-boot\t\tApply iOS 10 local boot patch\n");
+        printf("\t--remote-boot\t\tApply iOS 10 remote boot patch\n");
+        printf("\t--boot-partition\tApply boot-partition patch\n");
+        printf("\t--boot-partition9\tApply boot-partition patch (for De Rebus Antiquis [iOS 9 or later])\n");
+        printf("\t--boot-ramdisk\t\tApply boot-ramdisk patch\n");
+        printf("\t--setenv\t\tApply setenv patch\n");
+        printf("\t--disable-kaslr\t\tDisable KASLR\n");
+        printf("\t--bgcolor RRGGBB\tApply custom background color\n");
+        printf("\t--logo4\t\t\tFix AppleLogo for iOS 4 iBoot\n");
+        printf("\t--433\t\t\tApply enable jump to iBoot patch for iOS 4.3.3 or lower\n");
 		return -1;
 	}
 
 	printf("%s: Starting...\n", __FUNCTION__);
 
-	//printf("Offset in iBoot: 0x%016" PRIXPTR "\n", (uintptr_t)GET_IBOOT_FILE_OFFSET(.iboot_in, find_next_LDR_insn_with_value(&iboot_in, 'boot-partition')));
-	//return 1;
 	for(int i = 0; i < argc; i++) {
 		if(HAS_ARG("-b", 1)) {
 			custom_boot_args = (char*) argv[i+1];
 		}
-
         
         if(HAS_ARG("-c", 2)) {
 			cmd_handler_str = (char*) argv[i+1];
 			sscanf((char*) argv[i+2], "0x%08X", &cmd_handler_ptr);
 		}
         
-        if(HAS_ARG("-r", 0)) {
+        if(HAS_ARG("--rsa", 0)) {
             rsa_patch = true;
         }
+        
         if(HAS_ARG("-a", 0)) {
             env_boot_args = true;
         }
-        if(HAS_ARG("-p", 0)) {
-            boot_part_patch = true;
+        
+        if(HAS_ARG("--boot-partition", 0)) {
+            boot_partition_patch = true;
         }
-        if(HAS_ARG("-e", 0)) {
+        
+        if(HAS_ARG("--boot-partition9", 0)) {
+            boot_partition_patch = true;
+            boot_partition_9 = 1;
+        }
+        
+        if(HAS_ARG("--boot-ramdisk", 0)) {
+            boot_ramdisk_patch = true;
+        }
+        
+        if(HAS_ARG("--setenv", 0)) {
 			setenv_patch = true;
 		}
-        if(HAS_ARG("-d", 0)) {
+        
+        if(HAS_ARG("--debug", 0)) {
             debug_patch = true;
         }
-        if(HAS_ARG("-t", 0)) {
+        
+        if(HAS_ARG("--ticket", 0)) {
             ticket_patch = true;
         }
         
-        if(HAS_ARG("-x", 0)) {
+        if(HAS_ARG("--remote-boot", 0)) {
             remote_patch = true;
         }
         
-        if(HAS_ARG("-l", 1)) {
+        if(HAS_ARG("--local-boot", 0)) {
+            local_patch = true;
+        }
+        
+        if(HAS_ARG("--bgcolor", 1)) {
             custom_color = (char*) argv[i+1];
         }
-        if(HAS_ARG("-k", 0)) {
+        
+        if(HAS_ARG("--disable-kaslr", 0)) {
             kaslr_patch = true;
         }
         
+        if(HAS_ARG("--logo4", 0)) {
+            logo4_patch = true;
+        }
+        
+        if(HAS_ARG("--433", 0)) {
+            i433_patch = true;
+        }
 	}
     
-    if (!rsa_patch && !debug_patch && !boot_part_patch && !setenv_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch && !env_boot_args && !kaslr_patch) {
+    if(local_patch && remote_patch) {
+        return -1;
+    }
+    
+    if (!rsa_patch && !debug_patch && !boot_partition_patch && !boot_ramdisk_patch && !setenv_patch && !ticket_patch && !custom_boot_args && !cmd_handler_str && !remote_patch && !local_patch && !env_boot_args && !kaslr_patch && !i433_patch && !logo4_patch) {
         printf("%s: Nothing to patch!\n", __FUNCTION__);
         return -1;
     }
+    
     if(custom_boot_args && env_boot_args) {
     	printf("%s: Can't hardcode boot-args and use environment variable!\n", __FUNCTION__);
         return -1;
@@ -178,6 +217,7 @@ int main(int argc, char** argv) {
 		free(iboot_in.buf);
 		return -1;
 	}
+    
 	printf("%s: iBoot-%d inputted.\n", __FUNCTION__, iboot_in.VERS);
 		/* Check to see if the loader has a kernel load routine before trying to apply custom boot args + debug-enabled override. */
 	if(has_kernel_load(&iboot_in)) {
@@ -189,6 +229,7 @@ int main(int argc, char** argv) {
 				return -1;
 			}
 		}
+        
 		if(env_boot_args) {
 			ret = patch_env_boot_args(&iboot_in);
 			if(!ret) {
@@ -217,6 +258,7 @@ int main(int argc, char** argv) {
                 return -1;
             }
         }
+        
         if(custom_color) {
             ret = patch_bgcolor(&iboot_in, custom_color);
             if(!ret) {
@@ -227,17 +269,42 @@ int main(int argc, char** argv) {
         }
         
         if (remote_patch) {
-            ret = patch_remote_boot(&iboot_in);
+            ret = patch_boot_mode(&iboot_in, 1);
             if(!ret) {
-                printf("%s: Error doing patch_remote_boot()!\n", __FUNCTION__);
+                printf("%s: Error doing patch_boot_mode()!\n", __FUNCTION__);
                 free(iboot_in.buf);
                 return -1;
             }
             
         }
         
+        if (local_patch) {
+            ret = patch_boot_mode(&iboot_in, 2);
+            if(!ret) {
+                printf("%s: Error doing patch_boot_mode()!\n", __FUNCTION__);
+                free(iboot_in.buf);
+                return -1;
+            }
+        }
 	}
 
+    if (logo4_patch) {
+        ret = patch_logo4(&iboot_in);
+        if(!ret) {
+            printf("%s: Error doing patch_435()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+    }
+    
+    if (i433_patch) {
+        ret = patch_433orlower_jumpiBoot(&iboot_in);
+        if(!ret) {
+            printf("%s: Error doing patch_jumptoiBoot()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+    }
     
     if (ticket_patch) {
         ret = patch_ticket_check(&iboot_in);
@@ -246,7 +313,6 @@ int main(int argc, char** argv) {
             free(iboot_in.buf);
             return -1;
         }
-
     }
     
 	/* Ensure that the loader has a shell. */
@@ -270,14 +336,24 @@ int main(int argc, char** argv) {
         }
     }
 
-    if(boot_part_patch) {
-    	ret = patch_boot_partition(&iboot_in);
+    if(boot_partition_patch) {
+    	ret = patch_boot_partition(&iboot_in, boot_partition_9);
         if(!ret) {
             printf("%s: Error doing patch_boot_partition()!\n", __FUNCTION__);
             free(iboot_in.buf);
             return -1;
         }
     }
+    
+    if(boot_ramdisk_patch) {
+        ret = patch_boot_ramdisk(&iboot_in);
+        if(!ret) {
+            printf("%s: Error doing patch_boot_ramdisk()!\n", __FUNCTION__);
+            free(iboot_in.buf);
+            return -1;
+        }
+    }
+    
     if(setenv_patch) {
     	ret = patch_setenv_cmd(&iboot_in);
     	if(!ret) {

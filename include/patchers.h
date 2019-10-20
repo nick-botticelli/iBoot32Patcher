@@ -31,11 +31,13 @@ int patch_env_boot_args(struct iboot_img* iboot_in);
 int patch_cmd_handler(struct iboot_img* iboot_in, const char* cmd_str, uint32_t ptr);
 int patch_debug_enabled(struct iboot_img* iboot_in);
 int patch_rsa_check(struct iboot_img* iboot_in);
-int ignore_nvram_patch(struct iboot_img* iboot_in);
 int patch_ticket_check(struct iboot_img* iboot_in);
-int patch_remote_boot(struct iboot_img* iboot_in);
+int patch_boot_mode(struct iboot_img* iboot_in, int mode);
 int disable_kaslr(struct iboot_img* iboot_in);
 int patch_bgcolor(struct iboot_img* iboot_in, const char* bgcolor);
-int patch_boot_partition(struct iboot_img* iboot_in);
+int patch_boot_partition(struct iboot_img* iboot_in, int ver);
+int patch_boot_ramdisk(struct iboot_img* iboot_in);
 int patch_setenv_cmd(struct iboot_img* iboot_in);
+int patch_433orlower_jumpiBoot(struct iboot_img* iboot_in);
+int patch_logo4(struct iboot_img* iboot_in);
 #endif

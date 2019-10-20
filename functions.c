@@ -30,11 +30,13 @@ void* bl_search_down(const void* start_addr, int len) {
 void* bl_search_up(const void* start_addr, int len) {
     return pattern_search(start_addr, len, 0xD000F000, 0xD000F800, -1);
 }
+
 uint32_t sign_extend_11_32(uint32_t x) {
     const int bits = 11;
     uint32_t m = 1u << (bits - 1);
     return (x ^ m) - m;
 }
+
 uint32_t Resolve_BL_Long(uint32_t Offset, void* buff) {
     struct arm32_thumb_BL* bl = (struct arm32_thumb_BL*) buff;
     uint32_t low = bl -> offset2;
@@ -47,6 +49,7 @@ uint32_t Resolve_BL_Long(uint32_t Offset, void* buff) {
     PC += 0x4;
     return (Hi + PC);
 }
+
 void* Build_BL_Long(void* buff, uint32_t Target, uint32_t ins) {
     uint32_t PC = ins + 0x4;
     uint32_t offset = Target - PC;
@@ -108,6 +111,7 @@ void* find_next_CMP_insn_with_value(void* start, size_t len, const uint8_t val) 
     }
     return NULL;
 }
+
 void* find_next_LDR_insn_with_str(struct iboot_img* iboot_in, char* in) {
     char *str_loc = memmem(iboot_in->buf ,iboot_in->len, in,strlen(in));
     if(!str_loc) {
@@ -116,6 +120,7 @@ void* find_next_LDR_insn_with_str(struct iboot_img* iboot_in, char* in) {
     }
     return find_next_LDR_insn_with_value(iboot_in, GET_IBOOT_ADDR(iboot_in, str_loc));
 }
+
 void* find_next_LDR_insn_with_value(struct iboot_img* iboot_in, uint32_t value) {
     void* ldr_xref = (void*) memmem(iboot_in->buf, iboot_in->len, &value, sizeof(value));
     if(!ldr_xref) {

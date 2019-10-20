@@ -35,7 +35,6 @@ void* find_bl_verify_shsh(struct iboot_img* iboot_in) {
     return find_bl_verify_shsh_generic(iboot_in);
 }
 
-
 void* find_ldr_ecid(struct iboot_img* iboot_in) {
     printf("%s: Entering...\n", __FUNCTION__);
     
@@ -394,4 +393,3 @@ void* find_boot_ramdisk_ldr(struct iboot_img* iboot_in) {
     printf("%s: Found boot-ramdisk LDR: %p\n", __FUNCTION__, GET_IBOOT_ADDR(iboot_in, boot_ramdisk_ldr));
     return boot_ramdisk_ldr;
 }
-
