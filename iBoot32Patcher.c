@@ -279,7 +279,7 @@ int main(int argc, char** argv) {
         }
         
         if (local_patch) {
-            ret = patch_boot_mode(&iboot_in, 2);
+            ret = patch_boot_mode(&iboot_in, 0);
             if(!ret) {
                 printf("%s: Error doing patch_boot_mode()!\n", __FUNCTION__);
                 free(iboot_in.buf);
