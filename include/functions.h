@@ -38,6 +38,7 @@ void* Build_BL_Long(void* buff, uint32_t Target, uint32_t ins);
 uint32_t Resolve_BL_Long(uint32_t Offset, void* buff);
 void* find_last_LDR_rd(uintptr_t start, size_t len, const uint8_t rd);
 void* find_next_bl_insn_to(struct iboot_img* iboot_in, uint32_t addr);
+void* find_next_next_bl_insn_to(struct iboot_img* iboot_in, uint32_t addr);
 void* find_next_CMP_insn_with_value(void* start, size_t len, const uint8_t val);
 void* find_next_LDR_insn_with_value(struct iboot_img* iboot_in, uint32_t value);
 void* find_next_MOVW_insn_with_value(void* start, size_t len, const uint16_t val);

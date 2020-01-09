@@ -175,11 +175,20 @@ void* find_bl_verify_shsh_5_6_7(struct iboot_img* iboot_in) {
         return 0;
     }
     
-    printf("%s: Found BL verify_shsh at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, bl_verify_shsh));
+    void* bl_verify_shsh_next = find_bl_verify_shsh_insn_next(iboot_in, movw);
+    if(!bl_verify_shsh_next) {
+        printf("%s: Found BL verify_shsh at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, bl_verify_shsh));
+        
+        printf("%s: Leaving...\n", __FUNCTION__);
+        
+        return bl_verify_shsh;
+    }
+    
+    printf("%s: Found BL verify_shsh_next at %p\n", __FUNCTION__, GET_IBOOT_FILE_OFFSET(iboot_in, bl_verify_shsh_next));
     
     printf("%s: Leaving...\n", __FUNCTION__);
     
-    return bl_verify_shsh;
+    return bl_verify_shsh_next;
 }
 
 void* find_bl_verify_shsh_generic(struct iboot_img* iboot_in) {
@@ -218,6 +227,23 @@ void* find_bl_verify_shsh_insn(struct iboot_img* iboot_in, void* pc) {
     
     /* Find the BL insn resolving to this function... (BL verify_shsh seems to only happen once) */
     void* bl_verify_shsh = find_next_bl_insn_to(iboot_in, (uint32_t) ((uintptr_t)GET_IBOOT_FILE_OFFSET(iboot_in, function_top)));
+    if(!bl_verify_shsh) {
+        return 0;
+    }
+    
+    return bl_verify_shsh;
+}
+
+void* find_bl_verify_shsh_insn_next(struct iboot_img* iboot_in, void* pc) {
+    /* Find the top of the function... */
+    void* function_top = find_verify_shsh_top(pc);
+    if(!function_top) {
+        printf("%s: Unable to find top of verify_shsh!\n", __FUNCTION__);
+        return 0;
+    }
+    
+    /* Find the BL insn resolving to this function... (BL verify_shsh seems to only happen once) */
+    void* bl_verify_shsh = find_next_next_bl_insn_to(iboot_in, (uint32_t) ((uintptr_t)GET_IBOOT_FILE_OFFSET(iboot_in, function_top)));
     if(!bl_verify_shsh) {
         return 0;
     }

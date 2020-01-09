@@ -102,6 +102,23 @@ void* find_next_bl_insn_to(struct iboot_img* iboot_in, uint32_t addr) {
     return NULL;
 }
 
+void* find_next_next_bl_insn_to(struct iboot_img* iboot_in, uint32_t addr) {
+    for(int i = 0; i < iboot_in->len - sizeof(uint32_t); i++) {
+        void* possible_bl = resolve_bl32(iboot_in->buf + i);
+        uint32_t resolved = (uintptr_t) GET_IBOOT_FILE_OFFSET(iboot_in, possible_bl);
+        if(resolved == addr) {
+            for(int j = i+1; j < iboot_in->len - sizeof(uint32_t); j++) {
+                void* possible_bl = resolve_bl32(iboot_in->buf + j);
+                uint32_t resolved = (uintptr_t) GET_IBOOT_FILE_OFFSET(iboot_in, possible_bl);
+                if(resolved == addr) {
+                    return (void*) (iboot_in->buf + j);
+                }
+            }
+        }
+    }
+    return NULL;
+}
+
 void* find_next_CMP_insn_with_value(void* start, size_t len, const uint8_t val) {
     for(int i = 0; i < len; i += sizeof(uint16_t)) {
         struct arm32_thumb* insn = (struct arm32_thumb*) (start + i);

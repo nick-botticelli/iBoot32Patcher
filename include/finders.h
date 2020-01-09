@@ -35,6 +35,7 @@ void* find_boot_ramdisk_ldr(struct iboot_img* iboot_in);
 void* find_bl_verify_shsh_5_6_7(struct iboot_img* iboot_in);
 void* find_bl_verify_shsh_generic(struct iboot_img* iboot_in);
 void* find_bl_verify_shsh_insn(struct iboot_img* iboot_in, void* pc);
+void* find_bl_verify_shsh_insn_next(struct iboot_img* iboot_in, void* pc);
 void* find_dtre_get_value_bl_insn(struct iboot_img* iboot_in, const char* var);
 void* find_verify_shsh_top(void* ptr);
 uint32_t find_GETENV_Addr(struct iboot_img* iboot_in);
