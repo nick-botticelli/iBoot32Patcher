@@ -562,7 +562,7 @@ int patch_rsa_check(struct iboot_img* iboot_in) {
     
     /* Find the BL verify_shsh instruction... */
     int os_vers = get_os_version(iboot_in);
-    if(os_vers <= 4) {
+    if(os_vers == 4 || os_vers == 3) {
         
         void* rsa_check_4 = find_rsa_check_4(iboot_in);
         if(!find_rsa_check_4) {
@@ -635,7 +635,7 @@ int patch_boot_mode(struct iboot_img* iboot_in, int mode) {
         printf("%s: Unable to find %s string!\n", __FUNCTION__, "debug-uarts");
         return 0;
     }
-    printf("%s: %s string is at %p\n", __FUNCTION__, "debug-uarts", (void*) GET_IBOOT_FILE_OFFSET(iboot_in, ));
+    printf("%s: %s string is at %p\n", __FUNCTION__, "debug-uarts", (void*) GET_IBOOT_FILE_OFFSET(iboot_in, var_str_loc));
     
     /* Find the variable string xref... */
     uint32_t* var_xref = iboot_memmem(iboot_in, var_str_loc);
