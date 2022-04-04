@@ -19,10 +19,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <include/finders.h>
-#include <include/functions.h>
-#include <include/patchers.h>
-#include <include/iBoot32Patcher.h>
+#include "include/finders.h"
+#include "include/functions.h"
+#include "include/patchers.h"
+#include "include/iBoot32Patcher.h"
 
 #define MEMMEM_RELATIVE(iboot_in, bufstart, needle, needleLen) memmem(bufstart, iboot_in->len - ((char*)(bufstart) - (char*)iboot_in->buf), needle, needleLen)
 

@@ -20,7 +20,7 @@
 #ifndef FINDERS_H
 #define FINDERS_H
 
-#include <include/iBoot32Patcher.h>
+#include "iBoot32Patcher.h"
 
 #define RSA_PATCH_IOS_4 "\x4F\xF0\xFF\x30\xDD\xF8\x40\x24\xDB\xF8\x00\x30\x9A\x42\x01\xD0"
 

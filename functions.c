@@ -19,9 +19,9 @@
 
 #include <stdio.h>
 #include <stdint.h>
-#include <include/functions.h>
-#include <include/patchers.h>
-#include <include/iBoot32Patcher.h>
+#include "include/functions.h"
+#include "include/patchers.h"
+#include "include/iBoot32Patcher.h"
 
 void* bl_search_down(const void* start_addr, int len) {
     return pattern_search(start_addr, len, 0xD000F000, 0xD000F800, 1);

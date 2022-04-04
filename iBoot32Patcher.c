@@ -38,11 +38,11 @@
 #include <stdint.h>
 #include <inttypes.h>
 
-#include <include/arm32_defs.h>
-#include <include/finders.h>
-#include <include/functions.h>
-#include <include/iBoot32Patcher.h>
-#include <include/patchers.h>
+#include "include/arm32_defs.h"
+#include "include/finders.h"
+#include "include/functions.h"
+#include "include/iBoot32Patcher.h"
+#include "include/patchers.h"
 
 #define HAS_ARG(x,y) (!strcmp(argv[i], x) && (i + y) < argc)
 
